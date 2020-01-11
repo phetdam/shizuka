@@ -96,7 +96,7 @@
 # for the plots to be the maximum width to display well in git without having
 # to scroll to the right.
 #
-_MODULE_NAME = "multiclass_stats"
+_MODULE_NAME = "shizuka.plotting"
 
 __doc__ = """
 a module for quickly compiling and plotting statistics commonly used in multi-
@@ -716,4 +716,4 @@ def plot_feature_importances():
 # main
 if __name__ == "__main__":
     print("{0}: do not run module as script. refer to docstring for usage."
-          "".format(multiclass_stats.__name__), file = stderr)
+          "".format(_MODULE_NAME), file = stderr)
