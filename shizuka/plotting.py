@@ -3,6 +3,14 @@
 #
 # Changelog:
 #
+# 01-14-2020
+#
+# added layout keyword to coef_plot to add options for subplot layouts in the
+# case of multiple coefficient vectors in the multiclass case. completed the
+# implementation of the different layouts for coef_plot, and added _cfp_scale as
+# another constant to scale the subplot heights in coef_plot when the number of
+# features makes it impossible to fit all the text in the default size.
+#
 # 01-13-2020
 #
 # finished first draft of _adj_barh, and thus got rid of the test code in
@@ -175,8 +183,8 @@ _mcs_cmaps_binary = ("Blues", "coral", "#DE6FA1")
 _cfp_cmap = "tab20c"
 # figure sizes for multiclass_stats for multiclass and binary cases
 _mcs_figsize_multi, _mcs_figsize_binary = (15, 5.5), (12, 4.5)
-# subplot width and height for coef_plot
-_cfp_figwidth, _cfp_figheight = 6, 4
+# subplot width and height for coef_plot, dimension scaling for coef_plot
+_cfp_figwidth, _cfp_figheight, _cfp_scale = 6, 4, 0.24
 
 def multiclass_stats(mce, X_test, y_test, norm_true = True, figsize = "auto",
                      model_name = "auto", best_model = False, cmaps = "auto",
@@ -686,7 +694,7 @@ def _adj_barh(ax, coefs, flabs, figsize = (_cfp_figwidth, _cfp_figheight),
 
 def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
               best_model = False, style = "darkgrid", cmap = _cfp_cmap, cc = 0,
-              outfile = None, **kwargs):
+              outfile = None, layout = "dual", **kwargs):
     """
     given a fitted estimator with a coef_ or feature_importances_, plot model
     coefficients or feature importances (respectively). this method works for
@@ -701,13 +709,14 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
 
     note: in the multiclass coefficients case, a one vs. rest scheme is assumed,
           so each plot will also indicate which class is being treated as the
-          positive class. a plot with width >= height, with all subplots equally
-          spaced in a row equally spaced, is guaranteed for the multiclass
-          coefficients case. but the plot's last row in the multiclass case may
-          have fewer columns than the others. note that if est computes feature
-          importances, there will only be one plot even in the multiclass case.
+          positive class. note that if est computes feature importances, there
+          will only be one plot even in the multiclass case. different plot
+          layouts are available for the multiclass case.
 
           any style that contains gridlines will be missing the y gridlines.
+
+    warning: subplot adjustment is built into the function, so results with
+             manually specified figure sizes may be less than desirable.
 
     parameters:
 
@@ -733,6 +742,19 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
                  the color gradient defined by the color map when increased.
     outfile      optional, default None. if a string, the method will attempt to
                  save to the figure into that file.
+    layout       optional, default "dual". in the multiclass case with multiple
+                 coefficient vectors, where multiple plots will be produced,
+                 layout controls how the plots will be arranged. acceptable
+                 values are "dual", for a two-column layout with the last plot
+                 centered in the last row if the number of plots is odd, "stack"
+                 for a single stacked column of plots, "landscape" for a mapping
+                 of plots automatically onto a layout with more columns than
+                 rows, or "flush" for all plots on a single row. layout is
+                 ignored in the case of binary classification, or when features
+                 importances are being computed (which produce only one plot).
+
+                 note: "landscape" should be considered deprecated.
+
     **kwargs     additional keyword args to pass into matplotlib.pyplot.barh.
     """
     # save the name of the function for convenience
@@ -793,23 +815,35 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
     # if figsize is "auto" (default), determine plot size based on whether the
     # problem is a binary classification problem or a multiclass one.
     if figsize == "auto":
-        # if binary case, just set to max of (_cfp_figwidth, _cfp_figheight) or
-        # (0.75 + 0.3 * nfeatures, 0.5 + 0.2 * nfeatures). note that in the
-        # second case we see that the width is still 1.5 * the height. we opt
-        # to do elementwise width; this does not save space however.
-        # size of each individual Axes subplot
-        axsize = (max(_cfp_figwidth, 0.625 + 0.25 * nfeatures),
-                  max(_cfp_figheight, 0.5 + 0.2 * nfeatures))
+        # set size of individual subplot to max of (_cfp_figwidth,
+        # _cfp_figheight) or (_cfp_figwidth / _cfp_figheight + 1.25 * _cfp_scale
+        # * nfeatures, 0.5 + _cfp_scale * nfeatures).
+        axsize = (max(_cfp_figwidth, _cfp_figwidth / _cfp_figheight + 1.25 *
+                      _cfp_scale * nfeatures),
+                  max(_cfp_figheight, 0.5 + _cfp_scale * nfeatures))
         # in the binary case or if we have feature importances, only one Axes
         if (nclasses == 2) or (feature_imps == True): figsize = axsize
         # else we need to figure out how to arrange our subplots and scale
         # axsize's values by the number of columns and rows we have
         else:
-            # compute sqrt(nclasses); floor to get number of rows
-            nrows = int(sqrt(nclasses))
-            # compute number of columns and set figure size; again use same
-            # scheme as above to scale size as number of features grows
-            ncols = ceil(nclasses / nrows)
+            # if layout is "dual", then put plots into two columns
+            if layout == "dual": nrows, ncols = ceil(nclasses / 2), 2
+            # else if the layout is "stack", all plots in one column
+            elif layout == "stack": nrows, ncols = nclasses, 1
+            # else if layout is "landscape"
+            elif layout == "landscape":
+                # compute sqrt(nclasses); floor to get number of rows
+                nrows = int(sqrt(nclasses))
+                # compute number of columns and set figure size; again use same
+                # scheme as above to scale size as number of features grows
+                ncols = ceil(nclasses / nrows)
+            # else if layout is "flush", put all plots in a row
+            elif layout == "flush": nrows, ncols = 1, nclasses
+            # else unknown layout
+            else:
+                raise ValueError("{0}: error: unknown layout \"{1}\""
+                                 "".format(_fn, layout))
+            # set our figure size with our Axes dimensions and nrows, ncols
             figsize = (axsize[0] * ncols, axsize[1] * nrows)
     # else figsize is user specified; generate subplots with specified style.
     # number of subplots is 1 for binary or feature importances case, nclasses
@@ -820,30 +854,46 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
             fig, ax = subplots(nrows = 1, ncols = 1, figsize = figsize)
             # make single axis square; is [0, 1]^2 so we need to adjust later
             ax.axis("square")
-        # we will place ncols subplots in each row except for the last
+        # else multiclass case; now we need to be smart in arranging plots. we
+        # will not use the tight_layout() adjustment in the multi-plot case.
         else:
-            # get remainder of dividing nclasses by ncols. this will be the
-            # number of plots on the last row.
-            nrem = nclasses % ncols
-            # make empty figure with specified figsize, then add the first
-            # nclasses - nrem subplots to the figure, making sure that there are
-            # ncols subplots in each row except for the last (empty).
-            fig = new_figure(figsize = figsize)
-            for i in range(nclasses - nrem):
-                fig.add_subplot(nrows, ncols, i + 1)
-            # add the last nrem plots to the last row. now we pretend that fig
-            # has only nrem * nrows plots, so our indexing starts from nrem *
-            # (nrows - 1) + 1. note: cannot use tight_layout() here since we
-            # have rows with ncols that are not multiples of each other.
-            for i in range(nrem):
-                fig.add_subplot(nrows, nrem, nrem * (nrows - 1) + i + 1)
-            # for all the axes, set their plot areas to be square. we will have
-            # to manually adjust the plot ranges later (currently [0, 1]^2).
-            axs = fig.axes
+            # else if the layout is "stack", all plots in one column, while if
+            # layout is "flush", all the plots are in a row. use subplots.
+            if (layout == "stack") or (layout == "flush"):
+                fig, axs = subplots(nrows = nrows, ncols = ncols,
+                                    figsize = figsize)
+            # else if layout is "dual" or "landscape", we need to arrange the
+            # subplots manually; last row may have fewer plots than other rows.
+            elif (layout == "dual") or (layout == "landscape"):
+                # get remainder of dividing nclasses by ncols. this will be the
+                # number of plots on the last row.
+                nrem = nclasses % ncols
+                # make empty figure with specified figsize, then add the first
+                # nclasses - nrem subplots to the figure, making sure that there
+                # are ncols subplots in each row except for the last (empty).
+                fig = new_figure(figsize = figsize)
+                for i in range(nclasses - nrem):
+                    fig.add_subplot(nrows, ncols, i + 1)
+                # add the last nrem plots to the last row. now we pretend
+                # that fig has only nrem * nrows plots, so our indexing
+                # starts from nrem * (nrows - 1) + 1. note: cannot use
+                # tight_layout() here since we have rows with ncols that are
+                # not multiples of each other.
+                for i in range(nrem):
+                    fig.add_subplot(nrows, nrem, nrem * (nrows - 1) + i + 1)
+                # assign axes to the axs pointer
+                axs = fig.axes
+            # else unknown layout
+            else:
+                raise ValueError("{0}: error: unknown layout \"{1}\""
+                                 "".format(_fn, layout))
+            # for all the axes, set their plot areas to be square. we
+            # will have to manually adjust the plot ranges later;
+            # currently they are all [0, 1]^2.
             for ax in axs: ax.axis("square")
     ### make plots ###
-    # [sup]title of the plot, based on whether we have coefficients or
-    # feature importances (based on feature_imps)
+    # title of the plot or subtitle of each subplot, based on whether we have
+    # coefficients or feature importances (based on feature_imps)
     plot_main = ("{0} for {1}{2}"
                  "".format("Feature importances" if feature_imps == True else
                            "Coefficients", best_, model_name))
@@ -855,36 +905,29 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
         # subplot title and the subplot area (which we treat as suptitle)
         ax = _adj_barh(ax, coefs, flabs, figsize = figsize, axscale = axscale,
                        style = style, cmap = cmap, cc = cc, edgecolor = "white",
-                       edgewidth = 1, title = plot_main + "\n",
+                       edgewidth = 1, title = "{0} for {1}{2}\n" \
+                       "".format("Feature importances" if feature_imps == True
+                                 else "Coefficients", best_, model_name),
                        fontsize = "large", callfn = _fn, **kwargs)
-    # multiclass case; need to do this for each of the nclasses classes
+    # multiclass case; need to do this for each of the nclasses classes.
     else:
-        # we will have differing subplot titles, so first set suptitle
-        fig.suptitle(plot_main)
-        # recall that coefs
-        for ax, cf in zip(axs, coefs):
-            ax = _adj_barh(ax, cf, flabs, figsize = figsize, axscale = axscale,
-                           style = style, cmap = cmap, cc = cc, edgecolor = "white",
-                           edgewidth = 1, title = plot_main + "\n",
-                           fontsize = "large", callfn = _fn, **kwargs)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        # recall that coefs has shape (nclasses, nfeatures); plot separate
+        # coefficients for each target class (use classes_ attribute)
+        for ax, cf, clab in zip(axs, coefs, est.classes_):
+            _ = _adj_barh(ax, cf, flabs, figsize = figsize, axscale = axscale,
+                          style = style, cmap = cmap, cc = cc,
+                          edgecolor = "white", edgewidth = 1,
+                          title = "Coefficients ({0}) for {1}{2}\n" \
+                          "".format(clab, best_, model_name),
+                          fontsize = "large", callfn = _fn, **kwargs)
+        # adjust subplot positions to waste less space (suptitle space)
+        if (layout == "dual") or (layout == "landscape"):
+            fig.subplots_adjust(wspace = 0, hspace = 0.12)
+        elif layout == "stack": fig.subplots_adjust(hspace = 0.12)
+        elif layout == "flush": fig.subplots_adjust(hspace = 0)
     # if outfile is not None, save to outfile
     if outfile is not None: fig.savefig(outfile)
-    # return figure and axes
+    # return figure and axes (one or iterable of axes)
     if nclasses == 2: return fig, ax
     return fig, axs
 
