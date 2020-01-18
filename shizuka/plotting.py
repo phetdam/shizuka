@@ -3,6 +3,11 @@
 #
 # Changelog:
 #
+# 01-18-2020
+#
+# moved example usage in multiclass_stats to be after parameter descriptions.
+# added example usage for coef_plot and added description for axscale parameter.
+#
 # 01-14-2020
 #
 # added layout keyword to coef_plot to add options for subplot layouts in the
@@ -232,34 +237,6 @@ def multiclass_stats(mce, X_test, y_test, norm_true = True, figsize = "auto",
            in sorted class label order, and the macro and micro average entries
            will each be a float instead of None.
 
-    example usage:
-
-    suppose we are given a fitted classifier cf, test data X_test, y_test, and
-    want to indicate that cf is the best model out of a few other models, with 
-    the name my_best_model_20. we want to save the image to ./cf_stats.png. we
-    also want to keep the returned figure, confusion matrix, and dictionary of
-    metrics such as AUC, ROC, precision, and recall scores. furthermore, suppose
-    that this is a multiclass classification problem.
-
-    therefore, we could use the following function call:
-
-    from shizuka.plotting import multiclass_stats
-    fig, cmat, stats_dict = multiclass_stats(cf, X_test, y_test,
-                                             best_model = True,
-                                             model_name = "my_best_model_20",
-                                             outfile = "./cf_stats.png")
-
-    suppose we also wanted to print out some metrics like our ovr precision
-    scores, macro and micro precision scores, and ovr AUC scores. we can write
-
-    print("best test macro precision:\\t{0:.5f}\\nbest test micro precision:"
-          "\\t{1:.5f}\\nbest test ovr AUC:\\t\\t{2}"
-          "".format(stats_dict["macro_precision"],
-                    stats_dict["micro_precision"],
-                    tuple(map(lambda x: round(x, 5), stats_dict["auc"]))))
-    print("best test ovr precision:\\t{0}"
-          "".format(tuple(map(lambda x: round(x, 5), stats_dict["precision"]))))
-
     parameters:
 
     mce          fitted classifier inheriting from sklearn.base.ClassifierMixin
@@ -313,6 +290,34 @@ def multiclass_stats(mce, X_test, y_test, norm_true = True, figsize = "auto",
                  keyword, as cmaps determines the value passed. note that in the
                  multiclass case, arguments in kwargs will be applied to every
                  line plotted in the ROC and PR plots.
+
+    example usage:
+
+    suppose we are given a fitted classifier cf, test data X_test, y_test, and
+    want to indicate that cf is the best model out of a few other models, with 
+    the name my_best_model_20. we want to save the image to ./cf_stats.png. we
+    also want to keep the returned figure, confusion matrix, and dictionary of
+    metrics such as AUC, ROC, precision, and recall scores. furthermore, suppose
+    that this is a multiclass classification problem (not that it matters).
+
+    therefore, we could use the following function call:
+
+    from shizuka.plotting import multiclass_stats
+    fig, cmat, stats_dict = multiclass_stats(cf, X_test, y_test,
+                                             best_model = True,
+                                             model_name = "my_best_model_20",
+                                             outfile = "./cf_stats.png")
+
+    suppose we also wanted to print out some metrics like our ovr precision
+    scores, macro and micro precision scores, and ovr AUC scores. we can write
+
+    print("best test macro precision:\\t{0:.5f}\\nbest test micro precision:"
+          "\\t{1:.5f}\\nbest test ovr AUC:\\t\\t{2}"
+          "".format(stats_dict["macro_precision"],
+                    stats_dict["micro_precision"],
+                    tuple(map(lambda x: round(x, 5), stats_dict["auc"]))))
+    print("best test ovr precision:\\t{0}"
+          "".format(tuple(map(lambda x: round(x, 5), stats_dict["precision"]))))
     """
     # save the name of the function for convenience
     fname_ = multiclass_stats.__name__
@@ -728,7 +733,12 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
                  classification case. for the multiclass case, the height of the
                  plot is w = 4 * int(sqrt(n_classes)), while the width of the
                  plot is given by 6 * ceil(n_classes / w).
-    axscale
+    axscale      optional, default 1.1; must be >= 1. indicates the scale of the
+                 value axis relative to the largest bar being plotted. increase
+                 axscale to increase the distance between the longest bar and
+                 the edges of the plot. note that for feature importances, only
+                 the right edge will be affected, as all feature importance bars
+                 will be anchored on the left of the plot.
     model_name   optional, default "auto" gives the class name of mce. changes
                  titles of the coefficient/feature importances plots.
     best_model   optional, default False. whether or not to include "best"
@@ -756,6 +766,29 @@ def coef_plot(est, flabs, figsize = "auto", axscale = 1.1, model_name = "auto",
                  note: "landscape" should be considered deprecated.
 
     **kwargs     additional keyword args to pass into matplotlib.pyplot.barh.
+
+    examples:
+
+    suppose you have a fitted model est trained for a binary classification 
+    problem, and you would like to create a plot indicating that it is the best 
+    model, with the name cool_model_180. you want to save to ./best_coefs.png, 
+    and have the plot background dark but gridless. the labels of the features
+    are given by the columns of the training data X_train. you may invoke
+
+    from shizuka.plotting import coef_plot
+    fig, axs = coef_plot(est, X_train.columns, model_name = "cool_model_180",
+                         best_model = True, style = "dark", 
+                         outfile = "./best_coefs.png")
+
+    now suppose you have a fitted model est trained for a multiclass problem,
+    and this model has coefficients, not feature importances, so multiple plots
+    will be produced. you would like the layout to be displayed in two columns,
+    to use the Dark2 matplotlib color map, and to indicate that the model is the
+    best model. you don't want to save your plot, and again will pass the labels
+    of your training data matrix X_train as feature labels. you may invoke
+
+    fig, axs = coef_plot(est, X_train.columns, best_model = True, 
+                         layout = "dual", cmap = "Dark2")
     """
     # save the name of the function for convenience
     _fn = coef_plot.__name__
