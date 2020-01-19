@@ -3,6 +3,10 @@
 #
 # Changelog:
 #
+# 01-19-2020
+#
+# corrected error in multiclass_stats docstring (said cmat instead of axs).
+#
 # 01-18-2020
 #
 # moved example usage in multiclass_stats to be after parameter descriptions.
@@ -303,10 +307,10 @@ def multiclass_stats(mce, X_test, y_test, norm_true = True, figsize = "auto",
     therefore, we could use the following function call:
 
     from shizuka.plotting import multiclass_stats
-    fig, cmat, stats_dict = multiclass_stats(cf, X_test, y_test,
-                                             best_model = True,
-                                             model_name = "my_best_model_20",
-                                             outfile = "./cf_stats.png")
+    fig, axs, stats_dict = multiclass_stats(cf, X_test, y_test,
+                                            best_model = True,
+                                            model_name = "my_best_model_20",
+                                            outfile = "./cf_stats.png")
 
     suppose we also wanted to print out some metrics like our ovr precision
     scores, macro and micro precision scores, and ovr AUC scores. we can write
