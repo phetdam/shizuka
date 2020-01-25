@@ -1,0 +1,97 @@
+result for case 1:
+shizukaBaseCV(best_estimator=LogisticRegression, best_params={'C': 1.0,
+              'class_weight': None, 'dual': False, 'fit_intercept': True,
+              'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100,
+              'multi_class': 'auto', 'n_jobs': None, 'penalty': 'l2',
+              'random_state': None, 'solver': 'lbfgs', 'tol': 0.0001, 'verbose':
+              0, 'warm_start': False}, best_cv_score=0.7522436368986317,
+              mean_cv_score=0.7489627776960422,
+              std_cv_score=0.0026606689672222365, cv_iter=5, shuffle=False,
+              random_state=7, resampler=None, resampler_params=None,
+              total_time=11.538501739501953, cv_results={'train_scores':
+              [0.7486988745034574, 0.7498988524348977, 0.7484138222745329,
+              0.7492184051787554, 0.749678166838311], 'cv_scores':
+              [0.7507172281889068, 0.7460276592614389, 0.7522436368986317,
+              0.7492643813447109, 0.7465609827865235], 'train_times':
+              [2.1788136959075928, 2.7295358180999756, 1.9668004512786865,
+              2.079730987548828, 1.8795039653778076], 'resampling_times': None,
+              'resampled_shapes': None, 'train_shapes': [(217504, 26), (217504,
+              26), (217504, 26), (217504, 26), (217504, 26)], 'cv_shapes':
+              [(54376, 26), (54376, 26), (54376, 26), (54376, 26), (54376,
+              26)]})
+result for case 2:
+shizukaBaseCV(best_estimator=LogisticRegression, best_params={'C': 1.0,
+              'class_weight': None, 'dual': False, 'fit_intercept': True,
+              'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100,
+              'multi_class': 'auto', 'n_jobs': None, 'penalty': 'l2',
+              'random_state': None, 'solver': 'lbfgs', 'tol': 0.0001, 'verbose':
+              0, 'warm_start': False}, best_cv_score=0.7377335589230543,
+              mean_cv_score=0.7341216713255848,
+              std_cv_score=0.0025792129177134105, cv_iter=5, shuffle=False,
+              random_state=7, resampler=ADASYN, resampler_params={'n_jobs': 1,
+              'n_neighbors': 5, 'random_state': None, 'ratio': None,
+              'sampling_strategy': 'auto'}, total_time=1515.0965824127197,
+              cv_results={'train_scores': [0.7180793139434639,
+              0.718324559811218, 0.71748501139021, 0.7175006619009796,
+              0.7185803615674733], 'cv_scores': [0.7343681035751066,
+              0.731811828747977, 0.7377335589230543, 0.7352140650286891,
+              0.7314808003530969], 'train_times': [2.5671541690826416,
+              2.625976085662842, 2.366447687149048, 2.5266366004943848,
+              2.233940362930298], 'resampling_times': [298.94266176223755,
+              304.3601965904236, 298.84919142723083, 298.2456874847412,
+              301.6895272731781], 'resampled_shapes': [(264468, 26), (264432,
+              26), (264701, 26), (264390, 26), (264349, 26)], 'train_shapes':
+              [(217504, 26), (217504, 26), (217504, 26), (217504, 26), (217504,
+              26)], 'cv_shapes': [(54376, 26), (54376, 26), (54376, 26), (54376,
+              26), (54376, 26)]})
+result for case 3:
+shizukaBaseCV(best_estimator=LogisticRegression, best_params={'C': 1.0,
+              'class_weight': None, 'dual': False, 'fit_intercept': True,
+              'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100,
+              'multi_class': 'auto', 'n_jobs': None, 'penalty': 'l2',
+              'random_state': None, 'solver': 'lbfgs', 'tol': 0.0001, 'verbose':
+              0, 'warm_start': False}, best_cv_score=0.7437104604972782,
+              mean_cv_score=0.7395689274680006,
+              std_cv_score=0.0029806004789106224, cv_iter=5, shuffle=False,
+              random_state=7, resampler=SMOTE, resampler_params={'k_neighbors':
+              5, 'kind': 'deprecated', 'm_neighbors': 'deprecated', 'n_jobs': 1,
+              'out_step': 'deprecated', 'random_state': None, 'ratio': None,
+              'sampling_strategy': 'auto', 'svm_estimator': 'deprecated'},
+              total_time=549.243509054184, cv_results={'train_scores':
+              [0.7416210878152537, 0.7425186085371411, 0.7409559398758934,
+              0.7414117718511095, 0.7423873880721811], 'cv_scores':
+              [0.7394254818302192, 0.737549654259232, 0.7437104604972782,
+              0.7410622333382375, 0.736096807415036], 'train_times':
+              [2.569556713104248, 2.923158645629883, 2.8355631828308105,
+              2.5874266624450684, 2.330029010772705], 'resampling_times':
+              [107.21333432197571, 107.36095929145813, 106.4912006855011,
+              107.20133376121521, 107.02879571914673], 'resampled_shapes':
+              [(263280, 26), (263320, 26), (263322, 26), (263442, 26), (263116,
+              26)], 'train_shapes': [(217504, 26), (217504, 26), (217504, 26),
+              (217504, 26), (217504, 26)], 'cv_shapes': [(54376, 26), (54376,
+              26), (54376, 26), (54376, 26), (54376, 26)]})
+result for case 4:
+shizukaBaseCV(best_estimator=LogisticRegression, best_params={'C': 1.0,
+              'class_weight': None, 'dual': False, 'fit_intercept': True,
+              'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100,
+              'multi_class': 'auto', 'n_jobs': None, 'penalty': 'l2',
+              'random_state': None, 'solver': 'lbfgs', 'tol': 0.0001, 'verbose':
+              0, 'warm_start': False}, best_cv_score=0.7302854200382521,
+              mean_cv_score=0.7272546711784611,
+              std_cv_score=0.002654777048311547, cv_iter=5, shuffle=False,
+              random_state=7, resampler=SMOTEENN, resampler_params={'enn': None,
+              'n_jobs': 1, 'random_state': None, 'ratio': None,
+              'sampling_strategy': 'auto', 'smote': None},
+              total_time=2555.305258512497, cv_results={'train_scores':
+              [0.8812274198214441, 0.8821672980775054, 0.8790396485269939,
+              0.8804492170384302, 0.8813179567230057], 'cv_scores':
+              [0.727600411946447, 0.7236648521406502, 0.7302854200382521,
+              0.7290900397234074, 0.7256326320435487], 'train_times':
+              [1.6362197399139404, 1.8819677829742432, 1.6827807426452637,
+              1.7060167789459229, 1.3750841617584229], 'resampling_times':
+              [498.3036332130432, 491.294517993927, 492.021603345871,
+              509.19330525398254, 555.5478653907776], 'resampled_shapes':
+              [(148637, 26), (148609, 26), (148404, 26), (148347, 26), (148624,
+              26)], 'train_shapes': [(217504, 26), (217504, 26), (217504, 26),
+              (217504, 26), (217504, 26)], 'cv_shapes': [(54376, 26), (54376,
+              26), (54376, 26), (54376, 26), (54376, 26)]})
