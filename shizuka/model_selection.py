@@ -5,7 +5,8 @@
 #
 # 01-25-2020
 #
-# removed some old commented code that is no longer in use.
+# removed some old commented code that is no longer in use and cleaned up the
+# docstring, which still had old comments about the dict that used be returned.
 #
 # 01-23-2020
 #
@@ -86,35 +87,7 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
     and validated on the untouched validation fold. best used as a single
     model training with or without resampling using k-fold cross-validation.
 
-    returns an instance of shizukaBaseCV. see shizuka.base for details.
-
-    returns a dict of results given by
-
-    {"best_estimator": a, "best_cv_score": b, "train_scores": [...],
-     "cv_scores": [...], "mean_cv_score": c, "std_cv_score": d, 
-     "train_times": [...], "total_time": e, "resampler": None or f, 
-     "resampler_kwargs": None or {...}, "resampling_times": None or [...],
-     "train_shapes": [...], "cv_shapes": [...], "cv_iter": g, 
-     "shuffle": True or False, "random_state": None or h}
-
-    "best_estimator" gives the fitted estimator object that had the best CV
-    score, while "best_cv_score" gives that best estimator's CV score. 
-    "train_scores" gives the training scores of the estimator for each CV
-    iteration, while "cv_scores" gives validation scores of the estimator for
-    each CV iteration. "mean_cv_score" is the average validation score across
-    iterations, "std_cv_score" is the standard deviation of validation scores,
-    "train_times" indicates the time in seconds it took the estimator to be
-    trained on the [resampled] training data for each CV iteration. "total_time"
-    indicates the total overall running time in seconds, "resampler" is a
-    string, function, or abc.ABCMeta indicating the resampling callable, and 
-    "resampler_kwargs" may be None or a dict of keyword args passed to the
-    resampler. "resampling_times" gives the runtimes of calling the resampler on
-    the training data for each CV iteration, "train_shapes" and "cv_shapes" give
-    the shape of the [resampled] training and validation data subsets for each
-    CV iteration. "cv_iter" gives the number of CV iterations (folds). "shuffle"
-    and "random_state" correspond to the keyword arguments passed to the
-    sklearn.model_selection.KFold object instantiated within the method for
-    generating the cross-validation data set splits. see parameters below.
+    returns a shizuka.base.shizukaBaseCV instance. see shizuka.base for details.
 
     requires the package imblearn, which can be found on PyPI.
 
