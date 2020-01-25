@@ -1,0 +1,5 @@
+X_train,X_test,y_train,y_test,cv,resampler,figure
+./test_data/X_train.csv,./test_data/X_test.csv,./test_data/y_train.csv,./test_data/y_test.csv,5,None,./test_figures/resampling_test_None.png
+./test_data/X_train.csv,./test_data/X_test.csv,./test_data/y_train.csv,./test_data/y_test.csv,5,ADASYN,./test_figures/resampling_test_ADASYN.png
+./test_data/X_train.csv,./test_data/X_test.csv,./test_data/y_train.csv,./test_data/y_test.csv,5,SMOTE,./test_figures/resampling_test_SMOTE.png
+./test_data/X_train.csv,./test_data/X_test.csv,./test_data/y_train.csv,./test_data/y_test.csv,5,SMOTEENN,./test_figures/resampling_test_SMOTEENN.png
