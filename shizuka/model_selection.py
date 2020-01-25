@@ -3,6 +3,39 @@
 #
 # Changelog:
 #
+# 01-25-2020
+#
+# removed some old commented code that is no longer in use.
+#
+# 01-23-2020
+#
+# corrected premature conversion of single-column DataFrame to ndarray that
+# causes label-based indexing to fail in the main loop. fixed accidental removal
+# of the best_score intermediate value to help choose best estimator.
+#
+# 01-21-2020
+#
+# changed NotImplementedError to AttributeError in resampled_cv. added @property
+# decorators to the shizukaBaseCV class and moved it to a new file, base.py.
+# making changes to docstring of resampled_cv; retwrote to return shizukaBaseCV.
+# added additional type checking for resampler arg, which only needs to
+# implement fit_resample and get_params, which is needed for shizukaBaseCV to be
+# able to get parameters from the resampling object.
+#
+# 01-20-2020
+#
+# added of conversion of y_train vector in resampled_cv to ndarray so that there
+# won't be a DataConversionWarning. rewrote resampler initialization to prevent
+# repeated instantiation of a resampling object, as that it wasteful. corrected
+# error where cv_shapes were given train_shapes values instead. added a first
+# draft of shizukaBaseCV, which will most likely be revised later.
+#
+# 01-19-2020
+#
+# corrected some miscellaneous syntax and name errors. sucks not to have pylint.
+# corrected runtime bug in which resampling would only be applied to the first
+# iteration since we overwrite the resampling object.
+#
 # 01-17-2020
 #
 # added dict of internally supported samplers (so you don't have to pass a
@@ -25,7 +58,8 @@ sklearn, but as a complement for the more general model selection routines.
 _MODULE_NAME = "shizuka.model_selection"
 
 from abc import ABCMeta
-from numpy import ravel
+from .base import shizukaBaseCV
+from numpy import array, ravel
 from pandas import DataFrame
 from imblearn.combine import SMOTEENN
 from imblearn.over_sampling import ADASYN, SMOTE
@@ -46,10 +80,13 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
                  resampler_kwargs = None, shuffle = False, random_state = None,
                  cv = 3, n_jobs = 1):
     """
-    evaluates supervised learning models with cross-validation and optional or
-    built-in resampling. avoids the naive error of validating with a fold of
-    rsampled training data; the original training data used in training folds
-    is copied and validated on the untouched validation fold.
+    trains supervised learning models with cross-validation and optional
+    resampling. avoids the naive error of validating with a fold of resampled
+    training data; the original training data used in training folds is copied 
+    and validated on the untouched validation fold. best used as a single
+    model training with or without resampling using k-fold cross-validation.
+
+    returns an instance of shizukaBaseCV. see shizuka.base for details.
 
     returns a dict of results given by
 
@@ -95,16 +132,50 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
                       default None which indicates that the estimator's builtin 
                       score function is to be used. function only supports 
                       "accuracy" for classifiers and "r2" for regressors.
+
+                      note: currently ignored. uses only default scoring.
+
     resampler         optional resampling class name or function for resampling,
                       or a recognized resampling method such as "SMOTE" or 
-                      "SMOTEENN". acceptable resampling classes must inherit 
-                      from abc.ABCMeta and implement fit_resample, whose call 
-                      signature is given by fit_resample(self, X, y). X has 
-                      shape (n_samples, n_features). y has shape (n_samples,),
-                      fit_resample returns Xr, yr with shape (n_samples_new, 
-                      n_features), (n_samples). a user-defined resampling 
-                      function must have two unnamed required parameters X, y
-                      with optional keyword arguments or named arguments.
+                      "SMOTEENN". acceptable resampling classes must implement
+                      methods fit_resample and get_params with signatures
+
+                      def fit_resample(self, X, y):
+                          \"\"\"
+                          parameters:
+
+                          X    shape (n_samples, n_features)
+                          y    shape (n_samples,),
+
+                          returns:
+
+                          Xr, yr   shape (n_samples_new, n_features), (n_samples)
+                          \"\"\"
+                          # code
+
+                      def get_params(self):
+                          \"\"\"
+                          returns:
+
+                          params    dict "parameter": value
+                          \"\"\"
+                          # code
+
+                      a user-defined resampling function must have signature
+
+                      def [some_name](X, y, *args, **kwargs):
+                          \"\"\"
+                          parameters:
+
+                          X    shape (n_samples, n_features)
+                          y    shape (n_samples,)
+                          *args, **kwargs
+
+                          returns:
+
+                          Xr, yr   shape (n_samples_new, n_features), (n_samples)
+                          \"\"\"
+                          # code
 
                       note: if passing a user-defined resampling function, that
                             function must copy its input data internally!
@@ -125,7 +196,7 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
     # get function start time
     time_start = time()
     # save function name
-    fn = resampled_cv.__name__
+    _fn = resampled_cv.__name__
     ## sanity check boilerplate
     # check that the estimator est is a regressor or classifier. if not, error
     if (isinstance(est, ClassifierMixin) == False) and \
@@ -175,21 +246,42 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
                              "".format(_fn, scoring, _scorings))
     else: raise TypeError("{0}: scoring must be None or a string".format(_fn))
     # check resampler/resampling function (can be None); check if resampler is
-    # abc meta class, implementing the fit_resample method
-    if (resampler is None) or isinstance(resampler, ABCMeta):
-        if hasattr(resampler, "fit_resample"): pass
+    # implements fit_resample and get_params, with appropriate signatures
+    if (resampler is None): pass
+    # check fit_resample and get_params signatures
+    elif hasattr(resampler, "fit_resample") and \
+         hasattr(resampler, "get_params"):
+        # gets full arg spec
+        fr_spec = getfullargspec(resampler.fit_resample)
+        gp_spec = getfullargspec(resampler.get_params)
+        # check signature of fit_resample; must have 2 unnamed args only. since
+        # this is a class method, we need to ignore the self arg. no varargs.
+        # note that .defaults may be None, which we need to check; check "self"
+        if ("self" in fr_spec.args) and (fr_spec.varargs == None) and \
+           (((fr_spec.defaults is None) and (len(fr_spec.args) - 1 == 2)) or
+            (len(fr_spec.args) - len(fr_spec.defaults) - 1 == 2)): pass
         else:
-            raise NotImplementedError("{0}: {1} has no fit_resample method"
-                                      "".format(_fn, resampler))
+            raise ValueError("{0}: fit_resample must have signature with only "
+                             "self, two positional args, >= 0 named args, and "
+                             "optional **kwargs".format(_fn))
+        if ("self" in gp_spec.args) and (gp_spec.varargs == None) and \
+           (((gp_spec.defaults is None) and (len(gp_spec.args) == 1)) or
+            (len(gp_spec.args) - len(gp_spec.defaults) == 1)): pass
+        else:
+            raise ValueError("{0}: get_params must have signature with only "
+                             "self, >= 0 named args, and optional **kwargs"
+                             "".format(_fn))
     # else if a function (more accurately, is callable), check call signature
     elif hasattr(resampler, "__call__"):
-        # get full arg spec and check call signature
         fas = getfullargspec(resampler)
         # check that there are only two positional args; i.e. length of args -
         # number of defaults is 2 (args includes named args), and does not
         # allow any more positional args. if not, error
-        if (len(fas.args) - len(fas.defaults) == 2) and (fas.varargs == None):
-            pass
+        # note: we need to do extra check since fas.defaults may be None, and
+        # "self" cannot be in fas.args (else it is a class type)
+        if ("self" not in fas.args) and (fas.varargs == None) and \
+           (((fas.defaults is None) and (len(fas.args) == 2)) or
+            (len(fas.args) - len(fas.defaults) == 2)): pass
         else:
             raise ValueError("{0}: resampling function f must have signature "
                              "with only 2 positional args, >= 0 named args, "
@@ -197,9 +289,10 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
     # else if it is one of the internally supported sampling methods
     elif isinstance(resampler, str) and (resampler in _samplers): pass
     else:
-        raise TypeError("{0}: resampler type must be abc.ABCMeta implementing "
-                        "fit_transform, a function, or supported resampling "
-                        "method in {1}".format(_fn, tuple(_samplers.keys())))
+        raise TypeError("{0}: resampler type must be class implementing "
+                        "fit_transform and get_params, a function, or supported "
+                        "resampling method in {1}. see docstring for call "
+                        "signatures".format(_fn, tuple(_samplers.keys())))
     # check that resampler_kwargs is dict or None
     if (resampler_kwargs is None) or isinstance(resampler_kwargs, dict): pass
     else:
@@ -219,21 +312,13 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
                              "".format(_fn))
     else: raise TypeError("{0}: n_jobs must be a positive int or -1"
                           "".format(_fn))
-    # create results dict
+    # create results dict for shizukaBaseCV
     cv_results = {}
-    # set some easy attributes, like number of cv iterations
-    cv_results["cv_iter"] = cv
-    cv_results["shuffle"] = shuffle
-    cv_restuls["random_state"] = random_state
-    # may be None, function, or abc.ABCMeta
-    cv_results["resampler"] = resampler
-    # None or dict
-    cv_results["resampler_kwargs"] = resampler_kwargs
     # set lists for training scores, cv scores, fit times (on training data),
     # and the resampling times, which will all be added after each iteration
     cv_results["train_scores"] = []
     cv_results["cv_scores"] = []
-    cv_results["cv_fit_times"] = []
+    cv_results["train_times"] = []
     # if no resampler, then set resampling times and resamplined shapes to None
     if resampler is None:
         cv_results["resampling_times"] = None
@@ -248,36 +333,36 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
     splits = kfs.split(X_train, y_train)
     # start, ending times for timing resampling and training
     time_a, time_b = None, None
-    # potential best estimator and its score
+    # best estimator and score
     best_est, best_score = None, None
-    # for each of the set of cv split indices
+    # if resampler has fit_resample and get_params methods, instantiate
+    if hasattr(resampler, "fit_resample") and \
+       hasattr(resampler, "get_params"):
+        # instantiate with kwargs and make it point to object instead
+        if resampler_kwargs is None: resampler = resampler()
+        else: resampler = resampler(**resampler_kwargs)
+    # else is one of the supported resampling methods (resampler is str)
+    elif resampler in _samplers:
+        # instantiate with/without keyword args as appropriate
+        if resampler_kwargs is None: resampler = _samplers[resampler]()
+        else: resampler = _sampler[resampler](**resampler_kwargs)
+    ## main loop: for each of the set of cv split indices do
     for train_index, val_index in splits:
-        # training data (not copied)
+        # training data (not copied); flatten and convert to ndarray to suppress
+        # sklearn's DataConversionWarning. i.e. expected shape (n,), got (n, 1)
         X_rs = X_train.loc[train_index, :]
-        y_rs = y_train.loc[train_index, :]
+        y_rs = array(ravel(y_train.loc[train_index, :]))
         # validation set (no copy)
         X_val = X_train.loc[val_index, :]
-        y_val = y_train.loc[val_index, :]
+        y_val = array(ravel(y_train.loc[val_index, :]))
         # add shapes of training and cv data
         cv_results["train_shapes"].append(X_rs.shape)
-        cv_results["cv_shapes"].append(X_rs.shape)
+        cv_results["cv_shapes"].append(X_val.shape)
         ## resample X_rs, y_rs depending on the resampler type
+        # do nothing if resampler is None
         if resampler is None: pass
-        # already checked if fit_resample as implemented
-        elif isinstance(resampler, ABCMeta):
-            # instantiate with kwargs and make it point to object instead
-            if resampler_kwargs is None: resampler = resampler()
-            else: resampler = resampler(**resampler_kwargs)
-            # resample, time in seconds
-            time_a = time()
-            X_rs, y_rs = resampler.fit_resample(X_rs, y_rs)
-            time_b = time()
-        # else is one of the supported resampling methods (resampler is str)
-        elif resampler in _samplers:
-            # instantiate with/without keyword args as appropriate
-            if resampler_kwargs is None:
-                resampler = _samplers[resampler]()
-            else: resampler = _sampler[resampler](**resampler_kwargs)
+        # else if resampler has fit_resample, it is a resampling object
+        elif hasattr(resampler, "fit_resample"):
             # resample, time in seconds
             time_a = time()
             X_rs, y_rs = resampler.fit_resample(X_rs, y_rs)
@@ -322,19 +407,12 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
            ((best_est is not None) and (fitted_cv_score < best_score)):
             best_est, best_score = fitted_est, fitted_cv_score
         # proceed to next cv iteration
-    # after resampling/fitting all estimators, getting training/cv scores,
-    # training + resampling times, data shapes, and the best estimator, conclude
-    # first write in the best estimator (best_est) and cv score (best_score)
-    cv_results["best_estimator"] = best_est
-    cv_results["best_cv_score"] = best_score
-    # compute mean and standard deviation of scores (note ddof = 1)
-    cv_results["mean_cv_score"] = mean(cv_results["cv_scores"])
-    cv_results["std_cv_score"] = std(cv_results["cv_scores"], ddof = 1)
     # record function ending time
     time_end = time()
-    # add overall running time to dict and return
-    cv_results["total_time"] = time_end - time_start
-    return cv_results
+    # instantiate new shizukaBaseCV object with results and return
+    return shizukaBaseCV(best_est, cv_results, cv, time_end - time_start,
+                         shuffle, random_state, resampler = resampler,
+                         resampler_kwargs = resampler_kwargs)
 
 # main
 if __name__ == "__main__":
