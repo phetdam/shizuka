@@ -3,6 +3,10 @@
 #
 # Changelog:
 #
+# 01-27-2020
+#
+# made indication in docstring that matplotlib 3.1.2 fixed heatmap issue.
+#
 # 01-19-2020
 #
 # corrected error in multiclass_stats docstring (said cmat instead of axs).
@@ -162,9 +166,9 @@ class classification problems, with the goal of simplifying visualizations.
 contains methods for producing various statistical  plots for fitted sklearn
 or sklearn-compatible classifiers applied to multiclass classification problems.
 
-IMPORTANT: matplotlib<=3.1.0 recommended as 3.1.1 messes up the seaborn heatmap
-           annotations. i wrote this module with matplotlib==3.1.0; not sure if
-           3.1.2. has fixed the heatmap issue. also, the multiclass_stats
+IMPORTANT: matplotlib>=3.1.2 recommended as 3.1.1 messes up the seaborn heatmap
+           annotations. i wrote this module with matplotlib==3.1.0; version 
+           3.1.2 seems to fixed the heatmap issue. also, the multiclass_stats
            function requires version >=0.22 of sklearn, as the normalize kwarg
            for sklearn.metrics.confusion_matrix was only recently added in
            version 0.22 (not present in <=0.21).
