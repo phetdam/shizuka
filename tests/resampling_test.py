@@ -5,6 +5,10 @@
 #
 # Changelog:
 #
+# 01-28-2020
+#
+# modified _input_handler to not print extra newline with help blurb.
+#
 # 01-21-2020
 #
 # modified to retrieve best estimator from shizukaBaseCV instance attribute.
@@ -66,7 +70,7 @@ def _input_handler():
     elif (len(sys.argv) == 2) or (len(sys.argv) == 3):
         # if help, print help
         if sys.argv[1] == "--help":
-            print(_HELP_STR)
+            print(_HELP_STR, end = "")
             ec = 0
         # check if config file exists and if .csv
         elif exists(sys.argv[1]):
