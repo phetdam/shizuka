@@ -2,6 +2,17 @@
 #
 # Changelog:
 #
+# 02-02-2020
+#
+# made some minor code formatting changes to shizukaBaseCV and added a skeleton
+# __init__ method for the shizukaSearchCV class.
+#
+# 01-27-2020
+#
+# added shizukaAbstractCV as the abstract base class that all shizuka*CV
+# subclasses inherit from in order to organize the class hierarchy better.
+# edited shizukaBaseCV to inherit from shizukaAbstractCV. need to test.
+#
 # 01-23-2020
 #
 # finally wrote the __repr__() method for shizukaBaseCV.
@@ -16,14 +27,103 @@ __doc__ = "base code for the shizuka package"
 
 _MODULE_NAME = "shizuka.base"
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from inspect import getfullargspec
 from numpy import mean, std
 from pandas import DataFrame
 from sys import stderr
 from textwrap import fill
 
-class shizukaBaseCV:
+class shizukaAbstractCV(metaclass = ABCMeta):
+    """
+    base class that all shizuka*CV classes inherit from. defines several common
+    properties shared by all the subclasses. note that the cv_results property
+    is a dict, and the subclasses may have cv_results with differing keys.
+
+    (abstract) attributes:
+
+    best_estimator    best fitted sklearn estimator based on validation score
+    best_params       [hyper]parameters of best_estimator
+    best_cv_score     validation score of best_estimator
+    cv_iter           number of validation folds/iterations
+    shuffle           boolean, indicates if data was shuffled before splitting
+    random_state      seed (if any) used for data splitting
+    resampler         None, class instance implementing fit_resample and 
+                      get_params with signatures as detailed in the docstring of
+                      shizuka.model_selection.resampled_cv, or a function
+    resampler_params  None or dict. if resampler is class instance implementing
+                      fit_resample and get_params, then the value will be the
+                      dict returned by the object's get_params call. if the
+                      resampler is a function, then the value will be the dict
+                      of any keyword arguments passed to it.
+    total_time        total running time of cross-validation routine in seconds
+    cv_results        dict containing per-fold validation results. from a high
+                      level, for k folds, each key is an iterable of length k
+                      where each value at position i in the iterable is a result
+                      for the (i + 1)th cross-validation iteration.
+    """
+    @abstractmethod
+    def __init__(self, best_estimator, cv_results, cv_iter, total_time,
+                 shuffle, random_state, resampler = None,
+                 resampler_kwargs = None):
+        """
+        abstract constructor. all subclasses are required to override this, and
+        will most likely call super().__init__(...) in their own constructors.
+
+        does not contain much type checking.
+
+        parameters:
+
+        best_estimator    best fitted sklearn estimator, by validation score
+        cv_results        dict with per-fold validation results.
+        cv_iter           number of validation folds/iterations
+        total_time        total runtime of cross-validation routine in seconds
+        shuffle           boolean, indicates if data was shuffled before being
+                          split into training and validation folds.
+        random_state      None or seed (if any) used for k-fold data splitting
+        resampler         optional, default None. None, class instance
+                          implementing fit_resample and get_params, or 
+                          a custom resampling function.
+        resampler_kwargs  optional, default None. if resampler is not None,
+                          resampler_kwargs gives keyword args passed to the
+                          resampler (function, abc.ABCMeta), else ignored.
+        """
+        self.best_estimator = best_estimator
+        self.cv_results = cv_results
+        # get parameters from best_estimator
+        self.best_params = self.best_estimator.get_params()
+        self.cv_iter = cv_iter
+        self.total_time = total_time
+        self.shuffle = shuffle
+        self.random_state = random_state
+        self.resampler = resampler
+        # if resampler is None, ignore value of resampler_kwargs (set to None)
+        if self.resampler is None: self.resampler_params = None
+        # else if resampler implements fit_resample and get_params, call the
+        # get_params method to retrieve the resampler's parameters. we also
+        # explicitly check that the methods are instance methods.
+        # note: __init__ is required since we cannot call getfullargspec on
+        # a class instance by itself. ir resampler was a class name, then ok
+        elif ("self" in getfullargspec(self.resampler.__init__).args) and \
+             hasattr(self.resampler, "fit_resample") and \
+             hasattr(self.resampler, "get_params"):
+            self.resampler_params = self.resampler.get_params()
+        # else if resampler is a resampling function (should have two unnamed
+        # with no defaults; optional keyword args allowed. check skipped!)
+        elif hasattr(self.resampler, "__call__"):
+            self.resampler_params = resampler_kwargs
+        else:
+            raise TypeError("{0}: resampler must be class instance implementing"
+                            " fit_resample and get_params, None, or a function"
+                            "".format(self.__init__.__name__))
+
+    # require subclasses to override __repr__ since all subclasses should have
+    # representations that are meaningful and informative to the user
+    @abstractmethod
+    def __repr__(self): pass
+    
+
+class shizukaBaseCV(shizukaAbstractCV):
     """
     class returned from cross-validation routines containing results for a model
     trained with k-fold cross-validation and optional resampling.
@@ -67,11 +167,10 @@ class shizukaBaseCV:
                       dict values may also be accessed directly as attributes,
                       which is the syntactically preferred method of access.
     """
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time,
-                 shuffle, random_state, resampler = None,
-                 resampler_kwargs = None):
+    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
+                 random_state, resampler = None, resampler_kwargs = None):
         """
-        constructor for shizukaBaseCV
+        constructor for shizukaBaseCV, overriding that of shizukaAbstractCV
 
         parameters:
 
@@ -100,39 +199,15 @@ class shizukaBaseCV:
                           resampler_kwargs gives keyword args passed to the
                           resampler (function, abc.ABCMeta), else ignored.
         """
-        self.best_estimator = best_estimator
-        self.cv_results = cv_results
-        # get parameters from best_estimator
-        self.best_params = self.best_estimator.get_params()
+        # call super()
+        super().__init__(best_estimator, cv_results, cv_iter, total_time,
+                         shuffle, random_state, resampler = resampler,
+                         resampler_kwargs = resampler_kwargs)
         # get best_cv_score, mean_cv_score, and std_cv_score from cv_results
         self.best_cv_score = max(self.cv_results["cv_scores"])
         self.mean_cv_score = mean(self.cv_results["cv_scores"])
         # note that standard deviation is calculated with n - 1 denominator here
         self.std_cv_score = std(self.cv_results["cv_scores"], ddof = 1)
-        self.cv_iter = cv_iter
-        self.total_time = total_time
-        self.shuffle = shuffle
-        self.random_state = random_state
-        self.resampler = resampler
-        # if resampler is None, ignore value of resampler_kwargs (set to None)
-        if self.resampler is None: self.resampler_params = None
-        # else if resampler implements fit_resample and get_params, call the
-        # get_params method to retrieve the resampler's parameters. we also
-        # explicitly check that the methods are instance methods.
-        # note: __init__ is required since we cannot call getfullargspec on
-        # a class instance by itself. ir resampler was a class name, then ok
-        elif ("self" in getfullargspec(self.resampler.__init__).args) and \
-             hasattr(self.resampler, "fit_resample") and \
-             hasattr(self.resampler, "get_params"):
-            self.resampler_params = self.resampler.get_params()
-        # else if resampler is a resampling function (should have two unnamed
-        # with no defaults; optional keyword args allowed. check skipped!)
-        elif hasattr(self.resampler, "__call__"):
-            self.resampler_params = resampler_kwargs
-        else:
-            raise TypeError("{0}: resampler must be class instance implementing"
-                            " fit_resample and get_params, None, or a function"
-                            "".format(self.__init__.__name__))
 
     ## decorators for accessing values in self.cv_results as attributes ##
     @property
@@ -180,8 +255,8 @@ class shizukaBaseCV:
         resampler_name = "None" if self.resampler is None else \
             self.resampler.__class__.__name__
         # start building the output string and add best_est + params
-        out_str = self.__class__.__name__ + "(best_estimator=" + best_est_name + ", " + \
-            "best_params=" + repr(self.best_params) + ", "
+        out_str = self.__class__.__name__ + "(best_estimator=" + best_est_name \
+            + ", " + "best_params=" + repr(self.best_params) + ", "
         # add metrics, cv_iter, shuffle, random_state, resampler and the
         # resampler's parameters (can be None), total time, and cv_results
         out_str = out_str + "best_cv_score=" + str(self.best_cv_score) + \
@@ -201,6 +276,30 @@ class shizukaBaseCV:
     def __str__(self):
         """returns self.__repr__()"""
         return self.__repr__()
+
+
+class shizukaSearchCV(shizukaAbstractCV):
+    """
+    class returned from hyperparameter search routines containing results for a
+    model trained with k-fold cross-validation and optional resampling.
+
+    attributes:
+
+    best_estimator
+    best_params
+    best_cv_score
+    mean_cv_scores
+    std_cv_scores
+    cv_iter
+    shuffle
+    resampler
+    resampler_params
+    total_time
+    cv_results
+    """
+    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
+                 random_state, resampler = None, resampler_kwargs = None):
+        pass
 
 if __name__ == "__main__":
     print("{0}: do not run module as script".format(_MODULE_NAME),
