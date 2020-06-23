@@ -15,8 +15,8 @@ shizuka
 
 by Derek Huang
 
-*last updated on: 01-26-2020*
-*file created on: 01-10-2020*
+:last updated: 06-23-2020
+:file created: 01-10-2020
 
 Giving you peace of mind by simplifying the analysis of statistical model performance. Work in progress.
 
