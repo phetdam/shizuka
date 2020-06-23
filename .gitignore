@@ -1,0 +1,9 @@
+# Changelog:
+#
+# 06-23-2020
+#
+# initial creation. added ./build, __pycache__, and .ipynb_checkpoints ignores.
+
+/build
+**/__pycache__
+**/.ipynb_checkpoints
