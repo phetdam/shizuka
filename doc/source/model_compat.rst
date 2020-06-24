@@ -7,6 +7,8 @@
    initial creation. renamed to model_compat.rst. added intro and section
    headings for compatibility and scikit-learn compatibility.
 
+   todo: write more details about normal and scikit-learn compatibility
+
 Estimator compatibility
 =======================
 
