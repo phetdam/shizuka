@@ -7,7 +7,7 @@
    initial creation. renamed to model_compat.rst. added intro and section
    headings for compatibility and quasi-scikit-learn compatibility. Changed
    statement of compatibility to include the term "quasi" since not all the
-   scikit-learn features are supported.
+   scikit-learn features are supported. added function signatures.
 
    todo: write more details about normal and quasi-scikit-learn compatibility
 
@@ -28,3 +28,14 @@ When we label a supervised learning model as being "quasi-scikit-learn compatibl
 
 1. The model is representable as an instance of a concrete class
 2. The model has four key instance methods, namely ``fit``, ``get_params``, ``predict``, and ``score``.
+
+Function signatures. Note that we allow keyword arguments.
+   
+.. code:: python
+
+   fit(self: object, X: numpy.ndarray, y: numpy.ndarray, **kwargs) -> object
+   get_params(self: object, **kwargs) -> dict
+   predict(self: object, X: numpy.ndarray, **kwargs) -> numpy.ndarray
+   score(self: object, X: numpy.ndarray, y: numpy.ndarray, **kwargs) -> float
+
+Here ``X`` should have shape ``(n_samples, n_features)`` and ``y`` should have shape ``(n_samples,)`` or ``(n_samples, n_outputs)``.
