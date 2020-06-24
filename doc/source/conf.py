@@ -3,6 +3,12 @@
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+#
+# Changelog:
+#
+# 06-24-2020
+#
+# initial creation. change log added.
 
 # -- Path setup --------------------------------------------------------------
 
