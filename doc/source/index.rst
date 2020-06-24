@@ -10,6 +10,8 @@
    initial creation. added cringey quote and link to intro.rst, model_compat.rst
    + field to toctree so that only document titles will be displayed.
 
+   todo: configure autosummary and autodoc. 
+
 Welcome to shizuka's documentation!
 ===================================
 
