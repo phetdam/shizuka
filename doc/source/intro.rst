@@ -15,6 +15,7 @@ Introduction
 .. figure:: kongou_tea.jpg
    :height: 500 px
    :width: 500 px
+   :figwidth: 550 px
    :align: center
    :alt: Kongou drinking tea
 
