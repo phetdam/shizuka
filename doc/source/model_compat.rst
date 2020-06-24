@@ -26,7 +26,3 @@ When we label a supervised learning model as being "scikit-learn compatible", we
 
 1. The model is representable as an instance of a concrete class
 2. The model has four key instance methods, namely ``fit``, ``get_params``, ``predict``, and ``score``.
-   * fit
-   * get_params
-   * predict
-   * score
