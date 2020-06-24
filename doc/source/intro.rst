@@ -6,6 +6,8 @@
 
    initial creation. added change log, introduction header, and kongou
 
+   todo: write an actual intro.
+
 Introduction
 ============
 
