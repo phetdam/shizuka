@@ -2,6 +2,19 @@
 #
 # Changelog:
 #
+# 06-24-2020
+#
+# removed _MODULE_NAME; just use __module__ instead. renamed shizukaAbstractCV
+# to shizukaCoreCV because technically it's not abstract anymore. rewrote
+# docstrings for shizukaCoreCV, shizukaBaseCV, and retooled their __repr__
+# functions, created several readonly properties for them, and made them inherit
+# from touketsu.FrozenClass. added _raw__repr__ method to shizukaCoreCV to
+# reduce copy-pasting necessary for creating good representations.
+#
+# 06-23-2020
+#
+# changed base class from ABCMeta to concrete base class. working on docstring.
+#
 # 02-04-2020
 #
 # finished a first prototype of shizukaSearchCV.
@@ -33,81 +46,84 @@
 # confusion between abstract base class and object subclass type. streamlined
 # some type checking for the resampler, which should be a class instance.
 #
-__doc__ = "base code for the shizuka package"
+__doc__ = """Base code for the ``shizuka`` package."""
 
-_MODULE_NAME = "shizuka.base"
-
-from abc import ABCMeta, abstractmethod
 from inspect import getfullargspec
 from numpy import mean, std
 from pandas import DataFrame
 from sys import stderr
 from textwrap import fill
 
-class shizukaAbstractCV(metaclass = ABCMeta):
+from touketsu import FrozenClass # note: may not be uploaded to PyPI yet
+
+class shizukaCoreCV(FrozenClass):
+    """Base class that all ``shizuka`` CV results classes inherit from.
+
+    Do not use directly.
+
+    .. note::
+
+       :meth:`self._freeze` needs to be manually called in the :meth:`__init__`
+       method of any :class:`shizukaCoreCV` subclass.
+
+    Defines several common properties shared by all the subclasses. Note that
+    the :attr:`cv_results` property is a dict and that subclasses may have
+    :attr:`cv_results` with differing keys.
+
+    :param best_estimator: Best fitted scikit-learn compatible estimator by
+        validation score. Should implement the methods :meth:`predict` and
+        :meth:`score`, with the former giving predictions and the latter giving
+        a model evaluation metric such as accuracy or :math:`R^2`. Using type
+        annotations, the signatures of the two methods are
+
+        .. code:: python
+
+           predict(self: object, X: numpy.ndarray) -> numpy.ndarray
+           score(self: object, X: numpy.ndarray, y: numpy.ndarray) -> float
+
+        Here ``X`` should have shape ``(n_samples, n_features)`` and ``y``
+        should have shape ``(n_samples,)`` or ``(n_samples, n_outputs)``.
+    :type best_estimator: object
+    :param cv_results: Per-fold validation results from cross-validation.
+    :type cv_results: dict
+    :param cv_iter: Number of validation folds/iterations.
+    :type cv_iter: int
+    :param total_time: Total runtime of cross-validation routine in seconds
+    :type total_time: int
+    :param shuffle: Indicates if data was shuffled before being split into
+        training and validation folds.
+    :type shuffle: bool
+    :param random_state: ``None`` or integer seed, if any, used for k-fold data
+        splitting.
+    :type random_state: NoneType, int
+    :param resampler: Class instance implementing :meth:`fit_resample` and
+        :meth:`get_params` in the vein of ``imblearn``, or a custom resampling
+        function. Default ``None``.
+
+        .. note::
+
+           Elaborate more on what "custom resampling function" means and
+           give an explicit call signature for :meth:`fit_resample` and 
+           :meth:`get_params`.
+
+    :type resampler: object or function, optional
+    :param resampler_kwargs: Keyword arguments passed to ``resampler``. Set to
+        ``None`` if ``resampler`` is ``None``. Default ``None``.
+    :type resampler_kwargs: dict, optional
     """
-    base class that all shizuka*CV classes inherit from. defines several common
-    properties shared by all the subclasses. note that the cv_results property
-    is a dict, and the subclasses may have cv_results with differing keys.
-
-    (abstract) attributes:
-
-    best_estimator    best fitted sklearn estimator based on validation score
-    best_params       [hyper]parameters of best_estimator
-    cv_iter           number of validation folds/iterations
-    shuffle           boolean, indicates if data was shuffled before splitting
-    random_state      seed (if any) used for data splitting
-    resampler         None, class instance implementing fit_resample and
-                      get_params with signatures as detailed in the docstring
-                      of shizuka.model_selection.resampled_cv, or a function
-    resampler_params  None or dict. if resampler is class instance implementing
-                      fit_resample and get_params, then the value will be the
-                      dict returned by the object's get_params call. if the
-                      resampler is a function, then the value will be the dict
-                      of any keyword arguments passed to it.
-    total_time        total running time of cross-validation routine in seconds
-    cv_results        dict containing per-fold validation results. from a high
-                      level, for k folds, each key is an iterable of length k
-                      where each value at position i in the iterable is a result
-                      for the (i + 1)th cross-validation iteration.
-    """
-    @abstractmethod
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time,
-                 shuffle, random_state, resampler = None,
-                 resampler_kwargs = None):
-        """
-        abstract constructor. all subclasses are required to override this, and
-        will most likely call super().__init__(...) in their own constructors.
-
-        does not contain much type checking.
-
-        parameters:
-
-        best_estimator    best fitted sklearn estimator, by validation score
-        cv_results        dict with per-fold validation results.
-        cv_iter           number of validation folds/iterations
-        total_time        total runtime of cross-validation routine in seconds
-        shuffle           boolean, indicates if data was shuffled before being
-                          split into training and validation folds.
-        random_state      None or seed (if any) used for k-fold data splitting
-        resampler         optional, default None. None, class instance
-                          implementing fit_resample and get_params, or 
-                          a custom resampling function.
-        resampler_kwargs  optional, default None. if resampler is not None,
-                          resampler_kwargs gives keyword args passed to the
-                          resampler (function, abc.ABCMeta), else ignored.
-        """
-        self.best_estimator = best_estimator
-        self.cv_results = cv_results
+    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
+                 random_state, resampler = None, resampler_kwargs = None):
+        self._best_estimator = best_estimator
+        self._cv_results = cv_results
         # get parameters from best_estimator
-        self.best_params = self.best_estimator.get_params()
-        self.cv_iter = cv_iter
-        self.total_time = total_time
-        self.shuffle = shuffle
-        self.random_state = random_state
-        self.resampler = resampler
+        self._best_params = self.best_estimator.get_params()
+        self._cv_iter = cv_iter
+        self._total_time = total_time
+        self._shuffle = shuffle
+        self._random_state = random_state
+        self._resampler = resampler
         # if resampler is None, ignore value of resampler_kwargs (set to None)
-        if self.resampler is None: self.resampler_params = None
+        if self._resampler is None: self._resampler_params = None
         # else if resampler implements fit_resample and get_params, call the
         # get_params method to retrieve the resampler's parameters. we also
         # explicitly check that the methods are instance methods.
@@ -116,152 +132,39 @@ class shizukaAbstractCV(metaclass = ABCMeta):
         elif ("self" in getfullargspec(self.resampler.__init__).args) and \
              hasattr(self.resampler, "fit_resample") and \
              hasattr(self.resampler, "get_params"):
-            self.resampler_params = self.resampler.get_params()
+            self._resampler_params = self._resampler.get_params()
         # else if resampler is a resampling function (should have two unnamed
         # with no defaults; optional keyword args allowed. check skipped!)
         elif hasattr(self.resampler, "__call__"):
-            self.resampler_params = resampler_kwargs
+            self._resampler_params = resampler_kwargs
         else:
             raise TypeError("{0}: resampler must be class instance implementing"
                             " fit_resample and get_params, None, or a function"
                             "".format(self.__init__.__name__))
+    def _raw__repr__(self):
+        """Raw textual representation of the :class:`shizukaCoreCV`.
 
-    # require subclasses to override __repr__ since all subclasses should have
-    # representations that are meaningful and informative to the user
-    @abstractmethod
-    def __repr__(self): pass
-    
+        Gives a string representation of a :class:`shizukaCoreCV` instance.
+        Output is in the scikit-learn style, i.e. of the form
 
-class shizukaBaseCV(shizukaAbstractCV):
-    """
-    class returned from cross-validation routines containing results for a model
-    trained with k-fold cross-validation and optional resampling.
+        .. code:: python
 
-    note: does not contain a lot of type-checking, so manual type-checking is
-          required when instantiating an instance of the class. users should
-          never need to create an instance of shizukaBaseCV themselves.
+           shizukaCoreCV(best_estimator=LogisticRegression, ...
 
-    attributes:
+        This is the raw, unwrapped representation for the class instance.
 
-    best_estimator    best fitted sklearn estimator based on validation score
-    best_params       [hyper]parameters of best_estimator
-    best_cv_score     validation score of best_estimator
-    mean_cv_score     average of validation scores for each fold
-    std_cv_score      sample standard deviation of validation scores; computed
-                      with ddof = 1, so denominator k - 1 for k folds
-    cv_iter           number of validation folds/iterations
-    shuffle           boolean, indicates if data was shuffled before splitting
-    random_state      seed (if any) used for data splitting
-    resampler         None, class instance implementing fit_resample and 
-                      get_params as detailed in the docstring of shizuka.
-                      model_selection.resampled_cv, or a function
-    resampler_params  None or dict. if resampler is class instance implementing
-                      fit_resample and get_params, then the value will be the
-                      dict returned by the object's get_params call. if the
-                      resampler is a function, then the value will be the dict
-                      of any keyword arguments passed to it.
-    total_time        total running time of cross-validation routine in seconds
-    cv_results        dict with validation results for each fold. keys:
+        .. note::
 
-                      train_scores      estimator training scores per fold
-                      cv_scores         estimator validation scores per fold
-                      train_times       training times per fold in seconds
-                      resampling_times  resampling times per fold in seconds
-                                        or None if resampler is None
-                      train_shapes      shape of training set per fold
-                      resampled_shapes  shape of resampled training data per
-                                        fold; None if resampler is None
-                      cv_shapes         shape of validation set per fold
+           Although the representation contains most of the arguments passed to
+           :meth:`__init__`, it omits ``cv_results``. This is because
+           ``cv_results`` could possibly be very large in some subclasses and
+           therefore be unwieldy to display to the screen. Omitting
+           ``cv_results`` also gives room to append additional subclass
+           attributes to the end of the string generated by :meth:`__repr__`.
 
-                      dict values may also be accessed directly as attributes,
-                      which is the syntactically preferred method of access.
-    """
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
-                 random_state, resampler = None, resampler_kwargs = None):
-        """
-        constructor for shizukaBaseCV, overriding that of shizukaAbstractCV
-
-        parameters:
-
-        best_estimator    best fitted sklearn estimator, by validation score
-        cv_results        dict with validation results for each fold.
-
-                          train_scores      estimator training scores per fold
-                          cv_scores         estimator validation scores per fold
-                          train_times       training times per fold in seconds
-                          resampling_times  resampling times per fold in seconds
-                                            or None if resampler is None
-                          train_shapes      shape of training set per fold
-                          resampled_shapes  shape of resampled training data per
-                                            fold; None if resampler is None
-                          cv_shapes         shape of validation set per fold
-
-        cv_iter           number of validation folds/iterations
-        total_time        total runtime of cross-validation routine in seconds
-        shuffle           boolean, indicates if data was shuffled before being
-                          split into training and validation folds.
-        random_state      None or seed (if any) used for k-fold data splitting
-        resampler         optional, default None. None, class instance
-                          implementing fit_resample and get_params, or 
-                          a custom resampling function.
-        resampler_kwargs  optional, default None. if resampler is not None,
-                          resampler_kwargs gives keyword args passed to the
-                          resampler (function, abc.ABCMeta), else ignored.
-        """
-        # call super()
-        super().__init__(best_estimator, cv_results, cv_iter, total_time,
-                         shuffle, random_state, resampler = resampler,
-                         resampler_kwargs = resampler_kwargs)
-        # get best_cv_score, mean_cv_score, and std_cv_score from cv_results
-        self.best_cv_score = max(self.cv_results["cv_scores"])
-        self.mean_cv_score = mean(self.cv_results["cv_scores"])
-        # note that standard deviation is calculated with n - 1 denominator here
-        self.std_cv_score = std(self.cv_results["cv_scores"], ddof = 1)
-
-    ## decorators for accessing values in self.cv_results as attributes ##
-    @property
-    def train_scores(self): return self.cv_results["train_scores"]
-    
-    @property
-    def cv_scores(self): return self.cv_results["cv_scores"]
-
-    @property
-    def train_times(self): return self.cv_results["train_times"]
-
-    @property
-    def resampling_times(self): return self.cv_results["resampling_times"]
-
-    @property
-    def train_shapes(self): return self.cv_results["train_shapes"]
-
-    @property
-    def resampled_shapes(self): return self.cv_results["resampled_shapes"]
-
-    @property
-    def cv_shapes(self): return self.cv_results["cv_shapes"]
-
-    @property
-    def cv_results_df(self):
-        """
-        syntactic sugar to return cv_results attribute as a pandas.DataFrame. 
-        each row corresponds to a validation iteration. so for k folds in
-        k-fold cross validation, one would get k rows with headers 
-
-        |--------------|-----------|-   -|------------------|-----------|
-        | train_scores | cv_scores | ... | resampled_shapes | cv_shapes |
-        |--------------|-----------|-   -|------------------|-----------|
-        """
-        return DataFrame(self.cv_results)
-
-    ## instance methods ##
-    def __repr__(self):
-        """
-        defines textual representation of shizukaBaseCV. text wrapping is built
-        in to prevent input from flying off the screen.
-
-        output is in the sklearn repr style, i.e.
-
-        shizukaBaseCV(best_estimator=LogisticRegression, best_params={'C': ...
+        :returns: Raw, unwrapped string representation of the
+            :class:`shizukaCoreCV` instance in a scikit-learn like format
+        :rtype: str
         """
         # get name of the best estimator using name attribute of class type
         best_est_name = self.best_estimator.__class__.__name__
@@ -269,34 +172,416 @@ class shizukaBaseCV(shizukaAbstractCV):
             self.resampler.__class__.__name__
         # start building the output string and add best_est + params
         out_str = self.__class__.__name__ + "(best_estimator=" + best_est_name \
-            + ", " + "best_params=" + repr(self.best_params) + ", "
-        # add metrics, cv_iter, shuffle, random_state, resampler and the
-        # resampler's parameters (can be None), total time, and cv_results
-        out_str = out_str + "best_cv_score=" + str(self.best_cv_score) + \
-            ", mean_cv_score=" + str(self.mean_cv_score) + ", std_cv_score=" + \
-            str(self.std_cv_score) + ", cv_iter=" + str(self.cv_iter) + ", " + \
-            "shuffle=" + str(self.shuffle) + ", random_state=" + \
-            str(self.random_state) + ", resampler=" + resampler_name + ", " + \
-            "resampler_params=" + repr(self.resampler_params) + ", " \
-            "total_time=" + str(self.total_time) + ", cv_results=" + \
-            repr(self.cv_results) + ")"
+            + ", " + "best_params=" + repr(self._best_params) + ", "
+        # add cv_iter, shuffle, random_state, resampler and the resampler's
+        # parameters (can be None), total time, and cv_results.
+        return out_str = out_str + "cv_iter=" + str(self._cv_iter) + ", " + \
+            "shuffle=" + str(self._shuffle) + ", random_state=" + \
+            str(self._random_state) + ", resampler=" + resampler_name + ", " + \
+            "resampler_params=" + repr(self._resampler_params) + ", " \
+            "total_time=" + str(self._total_time) + ")"
+        
+    def __repr__(self):
+        """Textual representation of the :class:`shizukaCoreCV`.
+        
+        Gives a wrapped string representation of a :class:`shizukaCoreCV`
+        instance, essentially just wrapping the output of :meth:`_raw__repr__`
+        with :func:`textwrap.fill`.
+
+        :returns: Wrapped string representation of the :class:`shizukaCoreCV`
+            instance in a scikit-learn like format
+        :rtype: str
+        """
+        # use _raw__repr__ to get unwrapped representation.
+        out_str = self._raw__repr__()
         # use len(self.__class__.__name__) + 1 to determine value of the
         # subsequent_indent parameter. use textwrap.fill to wrap the text
         # and join lines together at the end
         return fill(out_str, width = 80, subsequent_indent = " " * \
                     (len(self.__class__.__name__) + 1))
 
-    def __str__(self):
-        """returns self.__repr__()"""
-        return self.__repr__()
+    def __str__(self): return self.__repr__()
+
+    @property
+    def best_estimator(self):
+        """Best fitted scikit-learn compatible estimator, by validation score.
+
+        .. note::
+
+           The term "compatible" means that the API for fitting and scoring the
+           estimator is consistent with that of the scikit-learn API. See the
+           description for ``best_estimator`` in the class docstring for more
+           details.
+
+        :rtype: object
+        """
+        return self._best_estimator
+
+    @property
+    def best_params(self):
+        """Hyperparameters of :attr:`best_estimator`.
+
+        :rtype: dict
+        """
+        return self._best_params
 
 
-class shizukaSearchCV(shizukaAbstractCV):
+    @property
+    def cv_iter(self):
+        """Number of validation folds/iterations used in cross-validation.
+
+        :rtype: int
+        """
+        return self._cv_iter
+
+    @property
+    def shuffle(self):
+        """Indicator if data was shuffled before splitting.
+        
+        :returns: Whether or not data was shuffled before splitting. ``True``
+            indicates that data was shuffled before cross-validation splitting
+            while ``False`` indicates no data shuffling.
+        :rtype: bool
+        """
+        return self._shuffle
+
+    @property
+    def random_state(self):
+        """Seed, if any, used when splitting the data before cross-validation.
+
+        :rtype: int or None
+        """
+        return self._random_state
+
+    @property
+    def resampler(self):
+        """Class instance or function used for rebalancing class proportions.
+
+        See ``resampler`` in the class docstring for more details.
+
+        :rtype: object or function
+        """
+        return self._resampler
+
+    @property
+    def resampler_params(self):
+        """Keyword arguments passed to ``resampler``.
+
+        ``None`` if :attr:`resampler` is ``None``.
+
+        :rtype: object, NoneType
+        """
+        return self._resampler_params
+
+    @property
+    def total_time(self):
+        """Total running time of cross-validation routine, in seconds.
+
+        :rtype: int
+        """
+        return self._total_time
+
+    @property
+    def cv_results(self):
+        """Per-fold validation results.
+
+        For ``k`` folds, each key corresponds to an iterable of length ``k``,
+        where each value at index ``i`` of the iterable, using zero-indexing,
+        corresponds to a result for the ``(i + 1)``th cross-validation
+        iteration.
+
+        :returns: Per-fold cross validation results.
+        :rtype: dict
+        """
+        return self._cv_results
+    
+
+class shizukaBaseCV(shizukaCoreCV):
+    """Class holding model results from k-fold cross-validation routines.
+
+    Contains results for a model trained with k-fold cross-validation and
+    optional resampling.
+
+    .. note::
+
+       :meth:`__init__` does not have much type checking, so manual type
+       checking is required before creating an instance of this class. Users
+       should never need to create a :class:`shizukaBaseCV` instance themselves.
+
+    :param best_estimator: Best fitted scikit-learn compatible estimator in
+        terms of validation score. 
+
+        .. note::
+
+           For a more precise definition of what "scikit-learn compatible"
+           means, please see the class docstring for :class:`shizukaCoreCV`.
+
+    :type best_estimator: object
+    :param cv_results: A dict with per-fold validation results. The keys
+        expected to be in the dict and their respective descriptions are below.
+
+        * ``train_scores``: Estimator training scores per fold
+        * ``cv_scores``: Estimator validation scores per fold
+        * ``train_times``: Training times per fold in seconds
+        * ``resampled_shapes``: Shape of resampled training data per fold. If
+          ``resampler`` is ``None``, then ``None``.
+        * ``cv_shapes``: Shape of validation set, per fold.
+    :type cv_results: dict
+    :param cv_iter: Number of validation/folds iterations
+    :type cv_iter: int
+    :param total_time: Total runtime of cross-validation routine in seconds
+    :type total_time: int
+    :param shuffle: ``True`` if data was shuffled before being split into
+        training and validation folds, ``False`` otherwise.
+    :type shuffle: bool
+    :param random_state: Seed used for k-fold data splitting, if any. ``None``
+        if no fixed seed was used.
+    :type random_state: int or NoneType
+    :param resampler: Class instance implementing :meth:`fit_resample` and
+        :meth:`get_params` like the resamplers defined in ``imblearn``, or a
+        custom resampling function. Default ``None``.
+
+        .. note::
+
+           See the docstring for :class:`shizukaCoreCV` more for details.
+
+    :type resampler: object or function, optional
+    :param resampler_kwargs: Keyword arguments passed to ``resampler``. Ignored
+        and set to ``None`` if ``resampler`` is ``None``. Default ``None``.
+    :type resampler_kwargs: dict, optional
     """
-    class returned from hyperparameter search routines containing results for a
-    model trained with k-fold cross-validation and optional resampling. the best
+    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
+                 random_state, resampler = None, resampler_kwargs = None):
+        # call super()
+        super().__init__(best_estimator, cv_results, cv_iter, total_time,
+                         shuffle, random_state, resampler = resampler,
+                         resampler_kwargs = resampler_kwargs)
+        # get best_cv_score, mean_cv_score, and std_cv_score from cv_results
+        self._best_cv_score = max(self.cv_results["cv_scores"])
+        self._mean_cv_score = mean(self.cv_results["cv_scores"])
+        # note that standard deviation is calculated with n - 1 denominator here
+        self._std_cv_score = std(self.cv_results["cv_scores"], ddof = 1)
+        # freeze the class instance
+        self._freeze()
+
+    def __repr__(self):
+        """Textual representation of the :class:`shizukaBaseCV`.
+        
+        Gives a wrapped string representation of a :class:`shizukaBaseCV`
+        instance. Output is in the scikit-learn style, i.e. with the form
+
+        .. code:: python
+
+           shizukaBaseCV(best_estimator=Perceptron, best_params={'penalty': ...
+
+        :returns: Wrapped string representation of the :class:`shizukaBaseCV`
+            instance in a scikit-learn like format
+        :rtype: str
+        """
+        # use _raw__repr__ to get unwrapped representation
+        out_str = self._raw__repr__()
+        # add metrics and cv_results to the end of out_str
+        out_str = out_str[:-1] + ", best_cv_score=" + \
+            str(self._best_cv_score) + ", mean_cv_score=" + \
+            str(self._mean_cv_score) + ", std_cv_score=" + \
+            str(self._std_cv_score) + ", cv_results=" + \
+            repr(self._cv_results) + ")"
+        # use len(self.__class__.__name__) + 1 to determine value of the
+        # subsequent_indent parameter. use textwrap.fill to wrap the text
+        # and join lines together at the end
+        return fill(out_str, width = 80, subsequent_indent = " " * \
+                    (len(self.__class__.__name__) + 1))
+
+    def __str__(self): return self.__repr__()
+        
+    @property
+    def best_cv_score(self):
+        """The score of :attr:`best_estimator`, i.e. max of validation scores
+
+        :rtype: float
+        """
+        return self._best_cv_score
+
+    @property
+    def mean_cv_score(self):
+        """Average validation score among all the folds.
+
+        :rtype: float
+        """
+        return self._mean_cv_score
+
+    @property
+    def std_cv_score(self):
+        """Standard deviation of the validation scores.
+
+        Computed with 1 delta degree of freedom, i.e. :func:`numpy.std` is
+        called with ``ddof = 1``.
+
+        :rtype: float
+        """
+        return self._std_cv_score
+
+    ## decorators for accessing values in self.cv_results as attributes ##
+    @property
+    def train_scores(self):
+        """Per-fold estimator training scores.
+
+        :returns: A list of estimator training scores with length equal to the
+            number of cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["train_scores"]
+    
+    @property
+    def cv_scores(self):
+        """Per-fold estimator validation scores.
+
+        :returns: A list of estimator validation scores with length equal to the
+            number of cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["cv_scores"]
+
+    @property
+    def train_times(self):
+        """Per-fold estimator training times.
+
+        :returns: A list of estimator training times in seconds with length
+            equal to the number of cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["train_times"]
+
+    @property
+    def resampling_times(self):
+        """Per-fold resampling times.
+
+        :returns: A list of resampling times in seconds with length equal to the
+            number of cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["resampling_times"]
+
+    @property
+    def train_shapes(self):
+        """Per-fold training data shapes.
+
+        :returns: A list of training data shapes, each of the form
+            ``(n_samples_i, n_features)``, with length equal to the number of
+            cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["train_shapes"]
+
+    @property
+    def resampled_shapes(self):
+        """Per-fold training data shapes after resampling.
+
+        :returns: A list of training data shapes after resampling for each fold,
+            each of the form ``(n_samples_i, n_features)``, with length equal to
+            the number of cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["resampled_shapes"]
+
+    @property
+    def cv_shapes(self):
+        """Per-fold validation data shapes.
+
+        :returns: A list of validation data shapes, each of the form
+            ``(n_samples_i', n_features)``, with length equal to the number of
+            cross-validation folds.
+        :rtype: list
+        """
+        return self._cv_results["cv_shapes"]
+
+    @property
+    def cv_results_df(self):
+        """Returns :attr:`cv_results` as a :class:`pandas.DataFrame`.
+
+        Syntactic sugar for returning :attr:`cv_results` attribute as a 
+        :class:`pandas.DataFrame`. Each row corresponds to a validation
+        iteration, so for ``k`` folds in ``k``-fold cross validation, one would
+        get ``k`` rows with the headers
+
+        ::
+
+            |--------------|-----------|-   -|------------------|-----------|
+            | train_scores | cv_scores | ... | resampled_shapes | cv_shapes |
+            |--------------|-----------|-   -|------------------|-----------|
+        """
+        return DataFrame(self._cv_results)    
+
+class shizukaSearchCV(shizukaCoreCV):
+    """Class with model results from hyperparameter search routines.
+
+    Returned from hyperparameter search routines, containing results for a model
+    trained with k-fold cross-validation and optional resampling. The best
     model is defined as the one that has the highest average validation score.
 
+        best_estimator     best fitted sklearn estimator by average cv score
+                           per validation fold, fit on all the training data
+                           with the parameters that were best performing on
+                           average and the best resampler given by resampler (if
+                           any) with best resampler_kwargs (if any).
+        cv_results         dict with validation results for each model. for each
+                           of the m models trained, each key points to a list of
+                           values where the ith index of each list corresponds
+                           to the ith model trained in the search method. keys:
+
+                           param_name         value of param "name" per model.
+                                              number of column varies with
+                                              parameters passed to search.
+                           resampler          string representing name of the
+                                              resampling class instance/function
+                                              used for each model
+                           rs_param_name      value of resampler param "name"
+                                              for each model. may not have these
+                                              columns if resampler has no kwargs
+                                              or have multiple columns.
+                           foldk_cv_score     model validation scores for the
+                                              kth validation fold, total of 
+                                              cv_iter columns fo cv scores
+                           mean_cv_score      mean model validation score
+                           std_cv_score       sample standard deviation of model
+                                              validation scores; computed with
+                                              ddof = 1. so for k validation
+                                              folds, use denominator k - 1.
+                           rank_cv_score      model ranking by average cv score
+                           foldk_train_score  model training scores for the kth
+                                              validation fold. total of cv_iter
+                                              columns for train scores.
+                           mean_train_score   mean model training score
+                           std_train_score    sample standard deviation of model
+                                              training scores with ddof = 1.
+                           mean_train_time    mean model training times, seconds
+                           mean_rs_time       mean resampling times, seconds
+                           foldk_train_shape  shape of kth fold training set,
+                                              total of cv_iter columns
+                           foldk_rs_shape     shape of kth fold training set
+                                              after application of resampling.
+                                              if no resampling was introduced,
+                                              may not be present, else cv_iter
+                                              total columns with resampling.
+                           foldk_cv_shape     shape of kth fold validation set,
+                                              total of cv_iter columns.
+        cv_iter            number of validation folds/iterations
+        total_time         total running time of the search routine in seconds
+        shuffle            boolean, indicates if data was shuffled before being
+                           split into training and validation folds
+        random_state       None or seed (if any) used for k-fold data splitting
+        resampler          None, class instance implementing fit_resample and
+                           get_params as detailed in the docstring of shizuka.
+                           model_selection.resampled_cv, or a function.
+                           resampler used (if any) with best_estimator.
+        resampler_params   None or dict. if resampler is class instance that
+                           implements fit_resample and get_params, then value
+                           will be the dict returned by object's get_params
+                           method. if the resampler is a function, then value
+                           will be the dict of any keyword arguments passed.
+                           params for resampler used with best_estimator.
+        """
+    """
     attributes:
 
     best_estimator         best fitted sklearn estimator by average cv score per
@@ -373,69 +658,7 @@ class shizukaSearchCV(shizukaAbstractCV):
     """
     def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
                  random_state, resampler = None, resampler_kwargs = None):
-        """
-        best_estimator     best fitted sklearn estimator by average cv score
-                           per validation fold, fit on all the training data
-                           with the parameters that were best performing on
-                           average and the best resampler given by resampler (if
-                           any) with best resampler_kwargs (if any).
-        cv_results         dict with validation results for each model. for each
-                           of the m models trained, each key points to a list of
-                           values where the ith index of each list corresponds
-                           to the ith model trained in the search method. keys:
 
-                           param_name         value of param "name" per model.
-                                              number of column varies with
-                                              parameters passed to search.
-                           resampler          string representing name of the
-                                              resampling class instance/function
-                                              used for each model
-                           rs_param_name      value of resampler param "name"
-                                              for each model. may not have these
-                                              columns if resampler has no kwargs
-                                              or have multiple columns.
-                           foldk_cv_score     model validation scores for the
-                                              kth validation fold, total of 
-                                              cv_iter columns fo cv scores
-                           mean_cv_score      mean model validation score
-                           std_cv_score       sample standard deviation of model
-                                              validation scores; computed with
-                                              ddof = 1. so for k validation
-                                              folds, use denominator k - 1.
-                           rank_cv_score      model ranking by average cv score
-                           foldk_train_score  model training scores for the kth
-                                              validation fold. total of cv_iter
-                                              columns for train scores.
-                           mean_train_score   mean model training score
-                           std_train_score    sample standard deviation of model
-                                              training scores with ddof = 1.
-                           mean_train_time    mean model training times, seconds
-                           mean_rs_time       mean resampling times, seconds
-                           foldk_train_shape  shape of kth fold training set,
-                                              total of cv_iter columns
-                           foldk_rs_shape     shape of kth fold training set
-                                              after application of resampling.
-                                              if no resampling was introduced,
-                                              may not be present, else cv_iter
-                                              total columns with resampling.
-                           foldk_cv_shape     shape of kth fold validation set,
-                                              total of cv_iter columns.
-        cv_iter            number of validation folds/iterations
-        total_time         total running time of the search routine in seconds
-        shuffle            boolean, indicates if data was shuffled before being
-                           split into training and validation folds
-        random_state       None or seed (if any) used for k-fold data splitting
-        resampler          None, class instance implementing fit_resample and
-                           get_params as detailed in the docstring of shizuka.
-                           model_selection.resampled_cv, or a function.
-                           resampler used (if any) with best_estimator.
-        resampler_params   None or dict. if resampler is class instance that
-                           implements fit_resample and get_params, then value
-                           will be the dict returned by object's get_params
-                           method. if the resampler is a function, then value
-                           will be the dict of any keyword arguments passed.
-                           params for resampler used with best_estimator.
-        """
         # call super() with appropriate parameters
         super().__init__(best_estimator, cv_results, cv_iter, total_time,
                          shuffle, random_state, resampler = resampler,
@@ -444,6 +667,8 @@ class shizukaSearchCV(shizukaAbstractCV):
         # best_resampler_params are simply decorators for returning the
         # resampler and resampler_params attributes of the abstract parent.
         self.best_cv_score = max(self.cv_results["mean_cv_score"])
+        # freeze
+        self._freeze()
 
     ## attribute decorators ##
     @property
@@ -478,21 +703,27 @@ class shizukaSearchCV(shizukaAbstractCV):
         
     @property
     def cv_results_df(self):
-        """
-        syntactic sugar to return cv_results attribute as a pandas.DataFrame
-        with n_1 * ... n_m models, with a row for each model/parameter
-        combination, where there are m parameters with n_i values for the ith
-        parameter. note that the number of columns may change, depending on the
-        number of cross-validation folds chosen and whether resampling was used.
+        """Returns :attr:`cv_results` as a :class:`pandas.DataFrame`.
 
-        for example, following the format of the sklearn GridSearchCV example,
-        the DataFrame could have a header format given by
+        Syntactic sugar for returning :attr:`cv_results` attribute as a 
+        :class:`pandas.DataFrame` with ``n_1 * ... n_m`` models, with a row for
+        each model/parameter combination, where there are ``m`` parameters with
+        ``n_i`` values for the ``i``th parameter. Note that the number of
+        columns may change, depending on the number of cross-validation folds
+        chosen and whether resampling was used.
 
-        |--------------|-------------|-   -|---------------|--------------|-
-        | param_kernel | param_gamma | ... | mean_cv_score | std_cv_score | ...
-        |--------------|-------------|-   -|---------------|--------------|-
+        For example, following the format of the scikit-learn
+        :class:`sklearn.model_seklection.GridSearchCV` example, the
+        :class:`pandas.DataFrame` could have a header format given by
+
+        ::
+
+          |--------------|-------------|-   -|---------------|--------------|-
+          | param_kernel | param_gamma | ... | mean_cv_score | std_cv_score | ...
+          |--------------|-------------|-   -|---------------|--------------|-
+
         """
-        return DataFrame(self.cv_results)
+        return DataFrame(self._cv_results)
 
     def __repr__(self):
         """
@@ -509,22 +740,8 @@ class shizukaSearchCV(shizukaAbstractCV):
 
         shizukaSearchCV(... tbd
         """
-        # get name of the best estimator using name attribute of class type
-        best_est_name = self.best_estimator.__class__.__name__
-        best_resampler_name = "None" if self.best_resampler is None else \
-            self.best_resampler.__class__.__name__
-        # start building the output string and add best_estimator, best_params,
-        # best_cv_score, best_resampler, best_resampler_params, cv_iter,
-        # shuffle, random_state, total_time to out_str; note that cv_results is
-        # dict but is not fully displayed
-        out_str = self.__class__.__name__ + "(best_estimator=" + best_est_name \
-            + ", " + "best_params=" + repr(self.best_params) + ", " + \
-            "best_cv_score=" + str(self.best_cv_score) + ", best_resampler=" \
-            + str(self.best_resampler) + ", best_resampler_params=" + \
-            repr(self.best_resampler_params) + ", cv_iter=" + \
-            str(self.cv_iter) + ", shuffle=" + str(self.shuffle) + ", " + \
-            "random_state=" + str(self.random_state) + ", total_time=" + \
-            str(self.total_time) + ", cv_results=dict, "
+        # get unwrapped, raw output from _raw__repr__
+        out_str = self._raw__repr__()
         # add the columns in cv_results that can be accessed as attributes
         out_str = out_str + "resamplers=" + repr(self.resamplers) + ", " + \
             "mean_cv_scores=" + repr(self.mean_cv_scores) + ", std_cv_scores=" \
@@ -540,10 +757,7 @@ class shizukaSearchCV(shizukaAbstractCV):
         return fill(out_str, width = 80, subsequent_indent = " " * \
                     (len(self.__class__.__name__) + 1))
 
-    def __str__(self):
-        """returns self.__repr__()"""
-        return self.__repr__()
+    def __str__(self): return self.__repr__()
 
 if __name__ == "__main__":
-    print("{0}: do not run module as script".format(_MODULE_NAME),
-          file = stderr)
+    print("{0}: do not run module as script".format(__module__), file = stderr)
