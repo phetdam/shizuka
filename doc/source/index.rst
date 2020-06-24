@@ -8,7 +8,8 @@
    06-24-2020
 
    initial creation. added cringey quote and link to intro.rst, model_compat.rst
-   + field to toctree so that only document titles will be displayed.
+   + field to toctree so that only document titles will be displayed. corrected
+   improperly formatted footnote.
 
    todo: configure autosummary and autodoc. 
 
@@ -25,7 +26,7 @@ Welcome to shizuka's documentation!
    Introduction <intro>
    Estimator compatibility <model_compat>
 
-.. [#]: Yes, I really did just make this up. Not kidding.
+.. [#] Yes, I really did just make this up. Not kidding.
 
 Indices and tables
 ==================
