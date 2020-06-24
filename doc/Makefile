@@ -1,4 +1,4 @@
-# Makefile for generating shizuka documentation
+# Makefile for generating shizuka package documentation
 #
 # Changelog:
 #
