@@ -9,7 +9,7 @@
 
    initial creation. added cringey quote and link to intro.rst, model_compat.rst
    + field to toctree so that only document titles will be displayed. corrected
-   improperly formatted footnote.
+   improperly formatted footnote. added autosummary with toctree.
 
    todo: configure autosummary and autodoc. 
 
@@ -20,11 +20,21 @@ Welcome to shizuka's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Package contents:
+   :caption: Primer pages:
    :titlesonly:
 
    Introduction <intro>
    Estimator compatibility <model_compat>
+
+.. note that ./modules will contain all the stub files generaetd by autosummary
+
+   todo: make sure all the docstrings are of the right format
+   
+.. autosummary::
+   :toctree: modules
+
+   shizuka.base
+   shizuka.utils
 
 .. [#] Yes, I really did just make this up. Not kidding.
 
