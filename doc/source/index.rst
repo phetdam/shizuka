@@ -5,6 +5,10 @@
 
    Changelog:
 
+   06-25-2020
+
+   added small intro blurb to the document + note about dependency list changes.
+
    06-24-2020
 
    initial creation. added cringey quote and link to intro.rst, model_compat.rst
@@ -18,6 +22,12 @@ Welcome to shizuka's documentation!
 ===================================
 
 *Only those with a quiet heart can concentrate on the sound of the truth.* [#]_
+
+A package for simplifying the analysis of statistical model performance, providing an abstracting layer over the standard Python scientific computing stack. 
+
+.. note::
+
+   Package dependencies subject to change without notice since package is in active development.
 
 .. toctree::
    :maxdepth: 2

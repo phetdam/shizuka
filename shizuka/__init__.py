@@ -2,6 +2,10 @@
 #
 # Changelog:
 #
+# 06-25-2020
+#
+# added imblearn to optional dependency list.
+#
 # 06-24-2020
 #
 # modified __all__ entry, updated docstring, and added simple dependency check.
@@ -38,7 +42,7 @@ for _d in _req_deps:
               category = ImportWarning)
 
 # check optional dependencies
-_opt_deps = ["sphinx-rtd-theme"]
+_opt_deps = ["imblearn", "sphinx-rtd-theme"]
 for _d in _opt_deps:
     try: import_module(_d)
     except ImportError:
