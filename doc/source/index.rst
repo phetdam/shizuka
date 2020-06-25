@@ -9,7 +9,8 @@
 
    initial creation. added cringey quote and link to intro.rst, model_compat.rst
    + field to toctree so that only document titles will be displayed. corrected
-   improperly formatted footnote. added autosummary with toctree.
+   improperly formatted footnote. added autosummary with toctree. change header
+   for indices and tables to be "-" instead of "=" to reduce size.
 
    todo: configure autosummary and autodoc. 
 
@@ -20,7 +21,7 @@ Welcome to shizuka's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Primer pages:
+   :caption: Package contents
    :titlesonly:
 
    Introduction <intro>
@@ -39,7 +40,7 @@ Welcome to shizuka's documentation!
 .. [#] Yes, I really did just make this up. Not kidding.
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

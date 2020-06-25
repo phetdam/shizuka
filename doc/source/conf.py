@@ -50,7 +50,7 @@ extensions = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -82,10 +82,12 @@ autosummary_generate = True
 
 # determines which external package documentations to link to. thanks to the
 # link here: https://gist.github.com/bskinn/0e164963428d4b51017cebdb6cda5209
-intersphinx_mapping = {"python": ("https://docs.python.org/3", None),
-                       "matplotlib": ("https://matplotlib.org/", None),
-                       "numpy": ("https://numpy.org/doc/stable/", None),
-                       "pandas": ("https://pandas.pydata.org/docs/", None)}
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "matplotlib": ("https://matplotlib.org/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None)
+}
 
 # -- Options for HTML output -------------------------------------------------
 
