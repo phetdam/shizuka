@@ -14,28 +14,27 @@ from sys import stderr
 
 __doc__ = """Contains utility functions used throughout the package."""
 
-def is_method(f):
-    """Determines if and object is an bound method or not.
+def is_method(obj):
+    """Determines if an object is an bound method or not.
 
-    :param f: Object to evaluate
-    :type f: object
-    :returns: ``True`` if ``f`` is an instance method, ``False`` otherwise
+    :param obj: Object to evaluate
+    :type obj: object
+    :returns: ``True`` if ``obj`` is an instance method, ``False`` otherwise
     :rtype: bool
     """
-    return str(type(f)) == "method"
+    return str(type(obj)) == "method"
 
 def is_compat(est):
     """Determines if an estimator is compatible with the ``shizuka`` API.
 
-    The exact notion of "compatibility" is covered in 
-    :doc:`../doc/source/model_compat`. Please read that page for details.
+    The exact notion of "compatibility" is covered in :doc:`../model_compat`.
+    Please read that page for details.
 
     .. note::
 
        If ``est`` is ``None``, then ``False`` will be silently returned.
 
-    :param est: Estimator instance. Must be a concrete class instance, not a
-        function.
+    :param est: Concrete estimator class instance.
     :type est: object
     :returns: ``True`` if ``est`` is compatible, ``False`` otherwise.
     :rtype: bool
@@ -50,10 +49,10 @@ def is_compat(est):
     return False
 
 def is_sklearn_compat(est):
-    """Determines if an estiamtor is quasi-scikit-learn compatible.
+    """Determines if an estimator is quasi-scikit-learn compatible.
 
     The exact notion of "quasi-scikit-learn compatibility", which is a rather
-    loose definition, is covered in :doc:`../doc/source/model_compat`. Please
+    loose definition, is covered in :doc:`../model_compat`. Please
     read that page for details.
 
     .. note::
@@ -61,9 +60,8 @@ def is_sklearn_compat(est):
        Calls :func:`is_compat` internally, so will return ``False`` if ``est``
        is ``None``.
 
-    :param est: Estimator instance. Must be a concrete class instance, not a
-        function.
-    ;type est: object
+    :param est: Concrete estimator class instance.
+    :type est: object
     :returns: ``True`` if ``est`` is quasi-scikit-learn compatible, ``False``
         otherwise.
     :rtype: bool
