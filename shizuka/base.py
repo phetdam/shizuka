@@ -9,7 +9,11 @@
 # docstrings for shizukaCoreCV, shizukaBaseCV, and retooled their __repr__
 # functions, created several readonly properties for them, and made them inherit
 # from touketsu.FrozenClass. added _raw__repr__ method to shizukaCoreCV to
-# reduce copy-pasting necessary for creating good representations.
+# reduce copy-pasting necessary for creating good representations. made new
+# check in shizukaCoreCV to ensure that resampler methods are instance methods,
+# using utils.is_method.
+#
+# todo: rewrite docstring and clean up shizukaSearchCV class and methods.
 #
 # 06-23-2020
 #
@@ -55,6 +59,7 @@ from sys import stderr
 from textwrap import fill
 
 from touketsu import FrozenClass # note: may not be uploaded to PyPI yet
+from .utils import is_method
 
 class shizukaCoreCV(FrozenClass):
     """Base class that all ``shizuka`` CV results classes inherit from.
@@ -70,19 +75,9 @@ class shizukaCoreCV(FrozenClass):
     the :attr:`cv_results` property is a dict and that subclasses may have
     :attr:`cv_results` with differing keys.
 
-    :param best_estimator: Best fitted scikit-learn compatible estimator by
-        validation score. Should implement the methods :meth:`predict` and
-        :meth:`score`, with the former giving predictions and the latter giving
-        a model evaluation metric such as accuracy or :math:`R^2`. Using type
-        annotations, the signatures of the two methods are
-
-        .. code:: python
-
-           predict(self: object, X: numpy.ndarray) -> numpy.ndarray
-           score(self: object, X: numpy.ndarray, y: numpy.ndarray) -> float
-
-        Here ``X`` should have shape ``(n_samples, n_features)`` and ``y``
-        should have shape ``(n_samples,)`` or ``(n_samples, n_outputs)``.
+    :param best_estimator: Best fitted compatible estimator by validation score.
+        Please see :doc:`../doc/source/model_compat` for details on how the term
+        "compatible" is being used in this context.
     :type best_estimator: object
     :param cv_results: Per-fold validation results from cross-validation.
     :type cv_results: dict
@@ -126,21 +121,22 @@ class shizukaCoreCV(FrozenClass):
         if self._resampler is None: self._resampler_params = None
         # else if resampler implements fit_resample and get_params, call the
         # get_params method to retrieve the resampler's parameters. we also
-        # explicitly check that the methods are instance methods.
-        # note: __init__ is required since we cannot call getfullargspec on
-        # a class instance by itself. ir resampler was a class name, then ok
-        elif ("self" in getfullargspec(self.resampler.__init__).args) and \
-             hasattr(self.resampler, "fit_resample") and \
-             hasattr(self.resampler, "get_params"):
+        # explicitly check that the methods are instance methods using
+        # utils.is_method, which uses type() to check the state of the function.
+        elif hasattr(self._resampler, "fit_resample") and \
+             is_method(self._resampler.fit_resample) and \
+             hasattr(self._resampler, "get_params") and \
+             is_method(self._resampler.get_params):
             self._resampler_params = self._resampler.get_params()
         # else if resampler is a resampling function (should have two unnamed
         # with no defaults; optional keyword args allowed. check skipped!)
-        elif hasattr(self.resampler, "__call__"):
+        elif hasattr(self._resampler, "__call__"):
             self._resampler_params = resampler_kwargs
         else:
             raise TypeError("{0}: resampler must be class instance implementing"
                             " fit_resample and get_params, None, or a function"
                             "".format(self.__init__.__name__))
+
     def _raw__repr__(self):
         """Raw textual representation of the :class:`shizukaCoreCV`.
 
@@ -175,11 +171,11 @@ class shizukaCoreCV(FrozenClass):
             + ", " + "best_params=" + repr(self._best_params) + ", "
         # add cv_iter, shuffle, random_state, resampler and the resampler's
         # parameters (can be None), total time, and cv_results.
-        return out_str = out_str + "cv_iter=" + str(self._cv_iter) + ", " + \
-            "shuffle=" + str(self._shuffle) + ", random_state=" + \
-            str(self._random_state) + ", resampler=" + resampler_name + ", " + \
-            "resampler_params=" + repr(self._resampler_params) + ", " \
-            "total_time=" + str(self._total_time) + ")"
+        return out_str + "cv_iter=" + str(self._cv_iter) + ", " + "shuffle=" + \
+            str(self._shuffle) + ", random_state=" + str(self._random_state) + \
+            ", resampler=" + resampler_name + ", " + "resampler_params=" + \
+            repr(self._resampler_params) + ", " "total_time=" + \
+            str(self._total_time) + ")"
         
     def __repr__(self):
         """Textual representation of the :class:`shizukaCoreCV`.
@@ -224,7 +220,6 @@ class shizukaCoreCV(FrozenClass):
         :rtype: dict
         """
         return self._best_params
-
 
     @property
     def cv_iter(self):
@@ -308,14 +303,9 @@ class shizukaBaseCV(shizukaCoreCV):
        checking is required before creating an instance of this class. Users
        should never need to create a :class:`shizukaBaseCV` instance themselves.
 
-    :param best_estimator: Best fitted scikit-learn compatible estimator in
-        terms of validation score. 
-
-        .. note::
-
-           For a more precise definition of what "scikit-learn compatible"
-           means, please see the class docstring for :class:`shizukaCoreCV`.
-
+    :param best_estimator: Best fitted compatible estimator in terms of
+        validation score. The definition of "compatible" in this context can be
+        found in :doc:`../doc/source/model_compat`.
     :type best_estimator: object
     :param cv_results: A dict with per-fold validation results. The keys
         expected to be in the dict and their respective descriptions are below.
