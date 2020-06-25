@@ -1,4 +1,4 @@
-# contains various utility functions
+# contains various utility functions.
 #
 # Changelog:
 #
