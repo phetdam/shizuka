@@ -7,6 +7,10 @@
 #
 # Changelog:
 #
+# 06-25-2020
+#
+# change pygments highlighting style to emacs.
+#
 # 06-24-2020
 #
 # initial creation. change log added. added autodoc, autosummary, intersphinx,
@@ -40,8 +44,7 @@ release = "0.0.1"
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
+# extensions coming with Sphinx (named 'sphinx.ext.*') or your own.
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
@@ -99,6 +102,9 @@ extensions.append(html_theme)
 
 # HTML theme options
 html_theme_options = {}
+
+# pygments style to use for syntax highlighting
+pygments_style = "emacs"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
