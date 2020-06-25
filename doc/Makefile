@@ -5,7 +5,9 @@
 # 06-24-2020
 #
 # initial creation. got rid of catchall, added BUILDOPTS and clean, html
-# targets. html target currently listed as dummy; configuration not complete.
+# targets. html target currently listed as dummy. changed clean target to
+# clean up autosummary-generated files in $(SOURCEDIR)/modules to force
+# clean rebuild of module documentation with `make html`.
 
 SPHINXBUILD   = sphinx-build
 # options for sphinx-build
@@ -18,14 +20,16 @@ BUILDDIR      = build
 
 # "make" without argument is like "make help" (due to being first target)
 help:
-	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
+	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)"
 
-# remove all emacs autosave files in the directory
+# remove autosummary generated module files to force rebuild. also removes any
+# emacs autosave files lingering around in this directory.
 clean:
+	@rm -vf $(SOURCEDIR)/modules/*.rst
 	@rm -vf *~
 
 # make html documentation
 html:
-	@$(SPHINXBUILD) -M html $(BUILDOPTS) "$(SOURCEDIR)" "$(BUILDDIR)"
+	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(BUILDOPTS)
 
 # no catch-alls; those are dangerous
