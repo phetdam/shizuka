@@ -9,7 +9,9 @@
 # 01-10-2020
 #
 # initial creation. add __doc__ for package level, __all__, and version.
-#
+
+from sys import stderr
+
 __doc__ = """Simplifying the analysis of statistical model performance.
 
 Making easier the analysis of statistical model performance by providing an
