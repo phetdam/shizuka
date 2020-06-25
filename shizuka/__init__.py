@@ -5,12 +5,15 @@
 # 06-24-2020
 #
 # modified __all__ entry, updated docstring, and added simple dependency check.
+# split dependency check into required and optional dependencies. used warnings
+# module instead of printing to sys.stderr.
 #
 # 01-10-2020
 #
 # initial creation. add __doc__ for package level, __all__, and version.
 
-from sys import stderr
+from importlib import import_module
+from warnings import warn
 
 __doc__ = """Simplifying the analysis of statistical model performance.
 
@@ -26,10 +29,18 @@ Requires ``sklearn >=0.22``.
 __all__ = ["model_selection", "plotting", "utils"]
 __version__ = "0.0.1"
 
-# check dependencies
-_deps = ["matplotlib", "numpy", "pandas", "sklearn"]
-for _d in _deps:
-    try: import _d
+# check required dependencies
+_req_deps = ["matplotlib", "numpy", "pandas", "sklearn"]
+for _d in _req_deps:
+    try: import_module(_d)
     except ImportError:
-        print("WARNING: missing required dependency {0}".format(_d),
-              file = stderr)
+        warn("warning: missing required dependency {0}".format(_d),
+              category = ImportWarning)
+
+# check optional dependencies
+_opt_deps = ["sphinx-rtd-theme"]
+for _d in _opt_deps:
+    try: import_module(_d)
+    except ImportError:
+        warn("warning: missing optional dependency {0}".format(_d),
+             category = ImportWarning)
