@@ -5,7 +5,13 @@
 # 06-26-2020
 #
 # change n_res_samples_i to n_rs_samples_i to keep consistent format. renamed
-# all classes to omit the "shizuka" prefix and gain the "Results" suffix.
+# all classes to omit the "shizuka" prefix and gain the "Results" suffix. added
+# best_score and scorer_name parameters to all the class constructors as well
+# as properties for the two in BaseCVResults. replace list types with
+# numpy.ndarray for more efficiency + ability to take advantage of vectorized
+# operations. renamed resampler and resampler_kwargs in all results classes
+# to best_resampler and best_resampler_params for consistency. rewrote
+# _raw__repr__ to simply use all the __init__ arguments for representation.
 #
 # 06-25-2020
 #
@@ -93,6 +99,10 @@ class BaseCVResults(FrozenClass):
         Please see :doc:`../model_compat` for details on how the term 
         "compatible" is being used in this context.
     :type best_estimator: object
+    :param best_score: Validation score of ``best_estimator``
+    :type best_score: float
+    :param scorer_name: Name of the metric used for scoring
+    :type scorer_name: str
     :param cv_results: Per-fold validation results from cross-validation.
     :type cv_results: dict
     :param cv_iter: Number of validation folds/iterations.
@@ -105,9 +115,9 @@ class BaseCVResults(FrozenClass):
     :param random_state: Seed used for k-fold data splitting. If no seed was
         provided, then defaults to ``None``.
     :type random_state: int or None
-    :param resampler: Class instance implementing :meth:`fit_resample` and
-        :meth:`get_params` in the vein of ``imblearn``, or a custom resampling
-        function. Default ``None``.
+    :param best_resampler: The best class instance implementing
+        :meth:`fit_resample` and :meth:`get_params` in the vein of ``imblearn``,
+        or a custom resampling function. Default ``None``.
 
         .. note::
 
@@ -115,17 +125,20 @@ class BaseCVResults(FrozenClass):
            give an explicit call signature for :meth:`fit_resample` and 
            :meth:`get_params`.
 
-    :type resampler: object or function, optional
-    :param resampler_kwargs: Keyword arguments passed to ``resampler`` if
-        ``resampler`` is a customer resampling function. Ignored if 
-        ``resampler`` is ``None`` or if ``resampler`` implements
-        :meth:`get_params` and :meth:`fit_resample` like the classes in 
-        ``imblearn`` package. Default ``None``.
-    :type resampler_kwargs: dict, optional
+    :type best_resampler: object or function, optional
+    :param best_resampler_params: The best keyword arguments passed to
+        ``best_resampler``. Ignored if  ``best_resampler`` is ``None`` or if
+        ``best_resampler`` implements :meth:`get_params` and
+        :meth:`fit_resample` like the classes in ``imblearn`` package. Default
+        ``None``.
+    :type best_resampler_params: dict, optional
     """
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
-                 random_state, resampler = None, resampler_kwargs = None):
+    def __init__(self, best_estimator, best_score, scorer_name, cv_results,
+                 cv_iter, total_time, shuffle, random_state,
+                 best_resampler = None, best_resampler_params = None):
         self._best_estimator = best_estimator
+        self._best_score = best_score
+        self._scorer_name = scorer_name
         self._cv_results = cv_results
         # get parameters from best_estimator
         self._best_params = self.best_estimator.get_params()
@@ -133,26 +146,26 @@ class BaseCVResults(FrozenClass):
         self._total_time = total_time
         self._shuffle = shuffle
         self._random_state = random_state
-        self._resampler = resampler
-        # if resampler is None, ignore value of resampler_kwargs (set to None)
-        if self._resampler is None: self._resampler_params = None
-        # else if resampler implements fit_resample and get_params, call the
+        self._best_resampler = best_resampler
+        # if best_resampler is None, set best_resampler_params to None
+        if self._best_resampler is None: self._best_resampler_params = None
+        # else if best_resampler implements fit_resample and get_params, call
         # get_params method to retrieve the resampler's parameters. we also
         # explicitly check that the methods are instance methods using
         # utils.is_method, which uses type() to check the state of the function.
-        elif hasattr(self._resampler, "fit_resample") and \
-             is_method(self._resampler.fit_resample) and \
-             hasattr(self._resampler, "get_params") and \
-             is_method(self._resampler.get_params):
-            self._resampler_params = self._resampler.get_params()
-        # else if resampler is a resampling function (should have two unnamed
-        # with no defaults; optional keyword args allowed. check skipped!)
-        elif hasattr(self._resampler, "__call__"):
-            self._resampler_params = resampler_kwargs
+        elif hasattr(self._best_resampler, "fit_resample") and \
+             is_method(self._best_resampler.fit_resample) and \
+             hasattr(self._best_resampler, "get_params") and \
+             is_method(self._best_resampler.get_params):
+            self._best_resampler_params = self._best_resampler.get_params()
+        # else if best_resampler is a resampling function (should have two
+        # unnamed with no defaults; optional keyword args allowed)
+        elif hasattr(self._best_resampler, "__call__"):
+            self._best_resampler_params = best_resampler_params
         else:
-            raise TypeError("{0}: resampler must be class instance implementing"
-                            " fit_resample and get_params, None, or a function"
-                            "".format(self.__init__.__name__))
+            raise TypeError("{0}: best_resampler must be class instance "
+                            "implementing fit_resample and get_params, None, "
+                            "or a function".format(self.__init__.__name__))
 
     def _raw__repr__(self):
         """Raw textual representation of the :class:`BaseCVResults`.
@@ -162,37 +175,40 @@ class BaseCVResults(FrozenClass):
 
         .. code:: python
 
-           BaseCVResults(best_estimator=LogisticRegression, ...)
+           BaseCVResults(best_estimator=SVC, best_params={'C': 1.0, ... )
 
-        This is the raw, unwrapped representation for the class instance.
+        This is the raw, unwrapped representation for the class instance. Each
+        of the keyword arguments corresponds to an :meth:`__init__` parameter
+        and its associated value.
 
         .. note::
 
-           Although the representation contains most of the arguments passed to
-           :meth:`__init__`, it omits :attr:`cv_results`, as :attr:`cv_results`
-           could possibly be quite large in some subclasses and therefore be
-           unwieldy to display to the screen. Omitting :attr:`cv_results` also
-           gives room to append additional subclass attributes to the end of the
-           string generated by :meth:`__repr__`.
+           :meth:`_raw__repr__` is kept separate from the actual 
+           :meth:`__repr__` method in case I change my mind on how subclasses
+           should be represented.
 
         :returns: Unwrapped string representation of the
             :class:`BaseCVResults` instance
         :rtype: str
         """
         # get name of the best estimator using name attribute of class type
-        best_est_name = self.best_estimator.__class__.__name__
-        resampler_name = "None" if self.resampler is None else \
-            self.resampler.__class__.__name__
-        # start building the output string and add best_est + params
-        out_str = self.__class__.__name__ + "(best_estimator=" + best_est_name \
-            + ", " + "best_params=" + repr(self._best_params) + ", "
-        # add cv_iter, shuffle, random_state, resampler and the resampler's
-        # parameters (can be None), total time, and cv_results.
-        return out_str + "cv_iter=" + str(self._cv_iter) + ", " + "shuffle=" + \
-            str(self._shuffle) + ", random_state=" + str(self._random_state) + \
-            ", resampler=" + resampler_name + ", " + "resampler_params=" + \
-            repr(self._resampler_params) + ", " "total_time=" + \
-            str(self._total_time) + ")"
+        best_est_name = self._best_estimator.__class__.__name__
+        # get resampler name; note that if resampler is a class instance, it is
+        # not callable (while the function is callable).
+        best_rs_name = None
+        if self._best_resampler is None: best_rs_name = "None"
+        elif hasattr(self._best_resampler, "__call__"):
+            best_rs_name = self._best_resampler.__name__
+        else: best_rs_name = self._best_resampler.__class__.__name__
+        # use getfullargspec to get all __init__ arguments; drop self arg
+        init_args = getfullargspec(self.__init__)
+        init_args.pop(0)
+        # build the output string by collecting private attributes
+        out_str = out_str + "("
+        for arg in init_args:
+            out_str = out_str + arg + "=" + getattr(self, "_" + arg) + ", "
+        # remove last ", ", replace with ")" and return
+        return out_str[:-2] + ")"
         
     def __repr__(self):
         """Textual representation of the :class:`BaseCVResults`.
@@ -225,6 +241,33 @@ class BaseCVResults(FrozenClass):
         :rtype: object
         """
         return self._best_estimator
+
+    @property
+    def best_score(self):
+        """The score of the best fitted compatible estimator.
+
+        See :attr:`scorer_name` for the scoring metric.
+
+        :rtype: float
+        """
+        return self._best_score
+
+    @property
+    def scorer_name(self):
+        """The name of the estimator scoring metric.
+
+        .. note::
+
+           :attr:`scorer_name` will have the value ``"default_score"`` if
+           :attr:`best_estimator` is quasi-scikit-learn compatible and if the
+           default scoring method, i.e. :meth:`score`, was used to score
+           :attr:`best_estimator`. Typically ``"default_score"`` corresponds
+           to :math:`R^2` for regression models and accuracy for classification
+           models.
+
+        :rtype: str
+        """
+        return self._scorer_name
 
     @property
     def best_params(self):
@@ -262,23 +305,25 @@ class BaseCVResults(FrozenClass):
         return self._random_state
 
     @property
-    def resampler(self):
-        """Class instance or function used for rebalancing class proportions.
+    def best_resampler(self):
+        """The best resampler used with :attr:`best_estimator`.
 
-        See ``resampler`` in the class docstring for more details.
+        Is ``None`` iIf the best average validation performance was with no 
+        resampler.
 
         :rtype: object or function
         """
         return self._resampler
 
     @property
-    def resampler_params(self):
-        """Keyword arguments passed to ``resampler``.
+    def best_resampler_params(self):
+        """Best keyword parameters passed to the :attr:`best_resampler`.
 
-        If :attr:`resampler` is ``None``, then :attr:`resampler_params` is also
-        ``None``.
-
-        :rtype: object
+        :returns: A dict of keyword arguments passed to :attr:`best_resampler`
+            used with the best performing model. Is ``None`` if
+            :attr:`best_resampler` is ``None`` or if the best resampler was
+            most effective with default keyword arguments.
+        :rtype: dict
         """
         return self._resampler_params
 
@@ -294,9 +339,10 @@ class BaseCVResults(FrozenClass):
     def cv_results(self):
         """Per-fold validation results.
 
-        Each key corresponds to a list of length ``cv_iter``, where each value
-        at index ``i``, using zero-indexing, corresponds to a result for the
-        ``(i + 1)``\ th cross-validation iteration.
+        Each key corresponds to a :class:`numpy.ndarray` with shape 
+        ``(cv_iter,)``, where each value at index ``i``, using zero-indexing,
+        corresponds to a result for the ``(i + 1)``\ th cross-validation
+        iteration.
 
         :rtype: dict
         """
@@ -320,37 +366,44 @@ class CoreCVResults(BaseCVResults):
         validation score. The definition of "compatible" in the context of this
         package can be found in :doc:`../model_compat`.
     :type best_estimator: object
+    :param best_score: Validation score of ``best_estimator``
+    :type best_score: float
+    :param scorer_name: Name of the metric used for scoring
+    :type scorer_name: str
     :param cv_results: A dict of per-fold cross-validation results. Each key is
-        points to a list with length ``cv_iter``, i.e. the number of cross-
-        validation folds used by the routine that generated the results. The
-        keys and the descriptions of the lists each key is associated with is
-        described below.
+        points to a :class:`numpy.ndarray` with shape ``(cv_iter,)``, i.e. the
+        number of cross-validation folds used by the routine that generated the
+        results. The keys and the descriptions of the data each key is
+        associated with is described below.
 
         ``train_scores``
-            A list of per-fold estimator training scores.
+            A :class:`numpy.ndarray` of per-fold estimator training scores.
 
         ``cv_scores``
-            A list of per-fold estimator validation scores.
+            A :class:`numpy.ndarray` of per-fold estimator validation scores.
 
         ``train_times``
-            A list of per-fold estimator training times in seconds.
+            A :class:`numpy.ndarray` of per-fold estimator training times in
+            seconds.
 
         ``resampling_times``
-            A list of per-fold times in seconds needed for resampling.
+            A :class:`numpy.ndarray` of per-fold times in seconds needed for
+            resampling.
 
         ``resampled_shapes``
-            A list of per-fold resampled training data shapes, where each ``i``\ 
-            th fold data shape is ``(n_rs_samples_i, n_features)``. If 
-            ``resampler`` is ``None``, then ``cv_results["resampled_shapes"]``
-            is ``None`` instead of a list.
+            A :class:`numpy.ndarray` of per-fold resampled training data shapes,
+            where each ``i``\ th fold data shape is 
+            ``(n_rs_samples_i, n_features)``. If ``resampler`` is ``None``, then
+            ``cv_results["resampled_shapes"]`` is ``None``.
 
         ``train_shapes``
-            A list of per-fold training data shapes, where each ``i``\ the fold
-            data shape is ``(n_train_samples_i, n_features)``.
+            A :class:`numpy.ndarray` of per-fold training data shapes, where
+            each ``i``\ the fold data shape is
+            ``(n_train_samples_i, n_features)``.
 
         ``cv_shapes``
-            A list of per-fold validation data shapes, where each ``i``\ th fold
-            data shape is ``(n_val_samples_i, n_features)``.
+            A :class:`numpy.ndarray` of per-fold validation data shapes, where
+            each ``i``\ th fold data shape is ``(n_val_samples_i, n_features)``.
 
     :type cv_results: dict
     :param cv_iter: Number of validation/folds iterations
@@ -363,64 +416,36 @@ class CoreCVResults(BaseCVResults):
     :param random_state: Seed used for k-fold data splitting. If no seed was 
         provided, then defaults to ``None``.
     :type random_state: int or None
-    :param resampler: Class instance implementing :meth:`fit_resample` and
-        :meth:`get_params` methods like the resampling classes defined in the
-        package ``imblearn``, or a custom-made resampling function. Default
-        ``None``.
+    :param best_resampler: The best class instance implementing
+        :meth:`fit_resample` and :meth:`get_params` in the vein of ``imblearn``,
+        or a custom resampling function. Default ``None``.
 
         .. note::
 
            See the docstring for :class:`CoreCVResults` more for details.
 
-    :type resampler: object or function, optional
-    :param resampler_kwargs: Keyword arguments passed to ``resampler``. Ignored
-        and set to ``None`` if ``resampler`` is ``None``. Default ``None``.
-    :type resampler_kwargs: dict, optional
+    :type best_resampler: object or function, optional
+    :param best_resampler_params: The best keyword arguments passed to
+        ``best_resampler``. Ignored if  ``best_resampler`` is ``None`` or if
+        ``best_resampler`` implements :meth:`get_params` and
+        :meth:`fit_resample` like the classes in ``imblearn`` package. Default
+        ``None``.
+    :type best_resampler_params: dict, optional
     """
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
-                 random_state, resampler = None, resampler_kwargs = None):
-        # call super()
-        super().__init__(best_estimator, cv_results, cv_iter, total_time,
-                         shuffle, random_state, resampler = resampler,
-                         resampler_kwargs = resampler_kwargs)
+    def __init__(self, best_estimator, best_score, scorer_name, cv_results,
+                 cv_iter, total_time, shuffle, random_state,
+                 best_resampler = None, best_resampler_params = None):
+        super().__init__(best_estimator, best_score, scorer_name, cv_results,
+                         cv_iter, total_time, shuffle, random_state,
+                         best_resampler = best_resampler,
+                         best_resampler_params = best_resampler_params)
         # get best_cv_score, mean_cv_score, and std_cv_score from cv_results
-        self._best_cv_score = max(self.cv_results["cv_scores"])
-        self._mean_cv_score = mean(self.cv_results["cv_scores"])
+        self._best_cv_score = max(self._cv_results["cv_scores"])
+        self._mean_cv_score = mean(self._cv_results["cv_scores"])
         # note that standard deviation is calculated with n - 1 denominator here
         self._std_cv_score = std(self.cv_results["cv_scores"], ddof = 1)
         # freeze the class instance
         self._freeze()
-
-    def __repr__(self):
-        """Textual representation of the :class:`CoreCVResults` instance.
-        
-        Gives a wrapped string representation of a :class:`CoreCVResults`
-        instance. The returned string is in the scikit-learn style, i.e. with
-        the form
-
-        .. code:: python
-
-           CoreCVResults(best_estimator=Perceptron, best_params={'penalty': ...)
-
-        :returns: Wrapped string representation of the :class:`CoreCVResults`
-            instance
-        :rtype: str
-        """
-        # use _raw__repr__ to get unwrapped representation
-        out_str = self._raw__repr__()
-        # add metrics and cv_results to the end of out_str
-        out_str = out_str[:-1] + ", best_cv_score=" + \
-            str(self._best_cv_score) + ", mean_cv_score=" + \
-            str(self._mean_cv_score) + ", std_cv_score=" + \
-            str(self._std_cv_score) + ", cv_results=" + \
-            repr(self._cv_results) + ")"
-        # use len(self.__class__.__name__) + 1 to determine value of the
-        # subsequent_indent parameter. use textwrap.fill to wrap the text
-        # and join lines together at the end
-        return fill(out_str, width = 80, subsequent_indent = " " * \
-                    (len(self.__class__.__name__) + 1))
-
-    def __str__(self): return self.__repr__()
         
     @property
     def best_cv_score(self):
@@ -454,8 +479,9 @@ class CoreCVResults(BaseCVResults):
     def train_scores(self):
         """Per-fold estimator training scores.
 
-        :returns: A list of :attr:`cv_iter` estimator training scores.
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of estimator training scores, shape
+            ``(cv_iter,)``.
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["train_scores"]
     
@@ -463,8 +489,9 @@ class CoreCVResults(BaseCVResults):
     def cv_scores(self):
         """Per-fold estimator validation scores.
 
-        :returns: A list of :attr:`cv_iter` estimator validation scores.
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of estimator validation scores, shape
+            ``(cv_iter,)``.
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["cv_scores"]
 
@@ -472,9 +499,9 @@ class CoreCVResults(BaseCVResults):
     def train_times(self):
         """Per-fold estimator training times.
 
-        :returns: A list of :attr:`cv_iter` estimator training times, in
-            seconds.
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of estimator training times in
+            seconds, shape ``(cv_iter,)``.
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["train_times"]
 
@@ -482,8 +509,9 @@ class CoreCVResults(BaseCVResults):
     def resampling_times(self):
         """Per-fold resampling times.
 
-        :returns: A list of :attr:`cv_iter` resampling times in seconds.
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of resampling times in seconds, shape
+            ``(cv_iter,)``.
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["resampling_times"]
 
@@ -491,10 +519,10 @@ class CoreCVResults(BaseCVResults):
     def train_shapes(self):
         """Per-fold training data shapes.
 
-        :returns: A list of :attr:`cv_iter` training data shapes, where the
-            shape of the ``i``\ th fold training data is
-            ``(n_train_samples_i, n_features)``.
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of training data shapes, shape
+            ``(cv_iter,)``, where the shape of the ``i``\ th fold training data 
+            is ``(n_train_samples_i, n_features)``.
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["train_shapes"]
 
@@ -502,10 +530,10 @@ class CoreCVResults(BaseCVResults):
     def resampled_shapes(self):
         """Per-fold training data shapes after resampling.
 
-        :returns: A list of :attr:`cv_iter` training data shapes after
-            resampling, where the shape of the ``i``\ th fold resampled
-            training data is ``(n_rs_samples_i, n_features)``.
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of resampled training data shapes, 
+            shape ``(cv_iter,)``, where the ``i``\ th fold resampled training data
+            shape is ``(n_rs_samples_i, n_features)``.
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["resampled_shapes"]
 
@@ -513,10 +541,10 @@ class CoreCVResults(BaseCVResults):
     def cv_shapes(self):
         """Per-fold validation data shapes.
 
-        :returns: A list of :attr:`cv_iter` validation data shapes, where the
-            shape of the ``i``\ th fold validation data is
+        :returns: A :class:`numpy.ndarray` of validation data shapes, shape
+            ``(cv_iter,)``, where the ``i``\ th fold validation data shape is
             ``(n_val_samples_i, n_features)``.
-        :rtype: list
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["cv_shapes"]
 
@@ -536,6 +564,7 @@ class CoreCVResults(BaseCVResults):
             | train_scores | cv_scores | ... | resampled_shapes | cv_shapes |
             |--------------|-----------|-   -|------------------|-----------|
 
+        :rtype: :class:`pandas.DataFrame`
         """
         return DataFrame(self._cv_results)
 
@@ -555,34 +584,40 @@ class SearchCVResults(BaseCVResults):
 
     :param best_estimator: Best fitted compatible estimator, by average
         cross-validation score. Contains the hyperparameters that were best
-        performing on average given the best resampler given by ``resampler``
-        and the best keyword arguments given by ``resampler_kwargs``, if any
-        keyword arguments were passed.
+        performing on average given the best resampler given by
+        ``best_resampler`` and the best keyword arguments given by
+        ``resampler_kwargs``.
     :type best_estimator: object
+    :param best_score: Validation score of ``best_estimator``
+    :type best_score: float
+    :param scorer_name: Name of the metric used for scoring
+    :type scorer_name: str
     :param cv_results: A dict with validation results for each model trained. If
         there are ``M`` possible hyperparameter combinations, then ``M`` models
         will have been trained. For each of the models, each key in
-        ``cv_results`` points to a list of values where the ``i``\ th index of
-        each list, under zero-indexing, corresponds to the ``(i + 1)``\ th of
-        the ``M`` models trained. The keys and descriptions of the lists each
-        key is associated with is described below.
+        ``cv_results`` points to a :class:`numpy.ndarray` of values where the
+        ``i``\ th index of each :class:`numpy.ndarray`, under zero-indexing,
+        corresponds to the ``(i + 1)``\ th of the ``M`` models trained. Keys 
+        and descriptions of their associated data is below.
         
         ``param_name``
-            For any model hyperparameter ``name``, a list of the values that
-            ``name`` took for each model. The number of these key-value pairs
-            depends on the number of hyperparameters passed to the search
-            routine.
+            For any model hyperparameter ``name``, a :class:`numpy.ndarray` of
+            the values that ``name`` took for each model. The number of these
+            key-value pairs is the number of hyperparameters passed to the
+            search routine.
 
         ``resampler``
-            A list of strings representing the name of the resampling class
-            instance or function used for resampling the model's training data.
+            A :class:`numpy.ndarray` of strings representing the name of the
+            resampling class instance or function used for resampling the
+            model's training data.
 
         ``rs_param_name``
-            For any resampler keyword argument ``name``, a list of the values
-            that ``name`` took for each resampler used on a particular model's
-            training data. May contain values of :class:`numpy.nan` to indicate
-            that a particular keyword argument is not one that is accepted by a
-            resampler, as some keyword arguments may be ``None``.
+            For any resampler keyword argument ``name``, a
+            :class:`numpy.ndarray` of the values that ``name`` took for each
+            resampler used on a particular model's training data. May contain
+            values of :class:`numpy.nan` to indicate that a particular keyword
+            argument is not one that is accepted by a resampler, as some keyword
+            arguments may be ``None``.
 
             .. note::
 
@@ -591,37 +626,37 @@ class SearchCVResults(BaseCVResults):
                ``cv_results``.
 
         ``foldk_cv_score``
-            A list of model validation scores for the ``k``\ th validation fold,
-            where ``k`` is in the range ``[1, cv_iter]``.
+            A :class:`numpy.ndarray` of model validation scores for the ``k``\ 
+            th validation fold, where ``k`` is in the range ``[1, cv_iter]``.
 
         ``mean_cv_score``
-            A list of model validation score averages, i.e. the average of each
-            model's ``cv_iter`` per-fold validation scores.
+            A :class:`numpy.ndarray` of model validation score averages, i.e.
+            the average of each model's ``cv_iter`` per-fold validation scores.
 
         ``std_cv_score``
-            A list of model validation score sample standard deviations,
-            computed using :func:`numpy.std` with ``ddof = 1``.
+            A :class:`numpy.ndarray` of model validation score sample standard
+            deviations, computed using :func:`numpy.std` with ``ddof = 1``.
 
         ``rank_cv_score``
-            A list of model rankings, by mean cross-validation score. The
-            highest rank model will have rank 1, the lowest rank model will have
-            rank ``M``.
+            A :class:`numpy.ndarray` of model rankings, by mean validation
+            score. The highest rank model will have rank 1, the lowest rank
+            model will have rank ``M``.
 
         ``foldk_train_score``
-            A list of model training scores for the ``k``\ th validation fold,
-            where ``k`` is in the range ``[1, cv_iter]``.
+            A :class:`numpy.ndarray` of model training scores for the ``k``\ th
+            validation fold, where ``k`` is in the range ``[1, cv_iter]``.
 
         ``mean_train_score``
-            A list of model training score averages, i.e. the average of each
-            model's ``cv_iter`` per-fold training scores.
+            A :class:`numpy.ndarray` of model training score averages, i.e. the
+            average of each model's ``cv_iter`` per-fold training scores.
 
         ``std_train_score``
-            A list of model training score sample standard deviations, computed
-            using :func:`numpy.std` with ``ddof = 1``.
+            A :class:`numpy.ndarray` of model training score sample standard
+            deviations, computed using :func:`numpy.std` with ``ddof = 1``.
 
         ``rank_train_score``
-            A list of model rankings, by mean training score. The highest rank
-            model will have rank 1, the lowest rank model will have rank ``M``.
+            A :class:`numpy.ndarray` of model rankings, by mean training score.
+            The highest rank model will have rank 1, the lowest rank ``M``.
 
             .. warning::
 
@@ -630,40 +665,40 @@ class SearchCVResults(BaseCVResults):
                A model's training performance is biased upwards.
     
         ``mean_train_time``
-            A list of average model training times, in seconds.
+            A :class:`numpy.ndarray` of average model training times, in
+            seconds.
 
         ``mean_rs_time``
-            A list of average resampling times, in seconds.
+            A :class:`numpy.ndarray` of average resampling times, in seconds.
 
         ``foldk_train_shape``
-            A list of shapes for the training data used during the ``k``\ th
-            validation fold, where ``k`` is in the range ``[1, cv_iter]``. The
-            shape for the ``i``\ th model has the format
+            A :class:`numpy.ndarray` of shapes for the training data used during
+            the ``k``\ th validation fold, where ``k`` is in the range
+            ``[1, cv_iter]``. The shape for the ``i``\ th model has the format
             ``(n_train_samples_i, n_features)``.
 
         ``foldk_rs_shape``
-            A list of shapes for the resampled training data used during the
-            ``k``\ th validation fold , where ``k`` is in the range 
-            ``[1, cv_iter]``. The shape for the ``i``\ th model has the format
-            ``(n_rs_samples_i,  n_features)``.
+            A :class:`numpy.ndarray` of shapes for the resampled training data
+            used during the ``k``\ th validation fold , where ``k`` is in the
+            range ``[1, cv_iter]``. The shape for the ``i``\ th model has the
+            format ``(n_rs_samples_i,  n_features)``.
 
         ``foldk_cv_shape``
-           A list of shapes for the validation data used during the ``k``\ th
-           validation fold, where ``k`` is in the range ``[1, cv_iter]``. The
-           shape for the ``i``\ th model has the format
+           A :class:`numpy.ndarray` of shapes for the validation data used
+           during the ``k``\ th validation fold, where ``k`` is in the range
+           ``[1, cv_iter]``. The shape for the ``i``\ th model has the format
            ``(n_val_samples_i, n_features)``.
 
     :type cv_results: dict
     :param cv_iter: Number of validation folds/iterations
     :type cv_iter: int
-    :param total_time: Total runtime of cross-validated hyperparameter search
-        routine, in seconds
+    :param total_time: Total runtime of the cross-validated hyperparameter search
+        routine used, in seconds
     :type total_time: int
     :param shuffle: ``True`` if data was shuffled before being split into
         training and validation folds, ``False`` otherwise.
     :type shuffle: bool
-    :param random_state:
-    :type random_state: Seed used for k-fold data splitting. If no seed was 
+    :param random_state: Seed used for k-fold data splitting. If no seed was 
         provided, then defaults to ``None``.
     :type random_state: int or None
     :param best_resampler: Of all the resamplers tried, the best resampler. Must
@@ -671,159 +706,135 @@ class SearchCVResults(BaseCVResults):
         methods like the resampling classes defined in ``imblearn``, or a custom
         resampling function. Default ``None``.
     :type best_resampler: object or function, optional
-    :param best_resampler_kwargs: Of all keyword argument combinations, the
+    :param best_resampler_params: Of all keyword argument combinations, the
         best combination passed to ``best_resampler``. Ignored and set to
         ``None`` if ``resampler`` is ``None``. Default ``None`.
-    :type best_resampler_kwargs: dict, optional
+    :type best_resampler_params: dict, optional
     """
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
-                 random_state, best_resampler = None,
-                 best_resampler_kwargs = None):
-
+    def __init__(self, best_estimator, best_score, scorer_name, cv_results,
+                 cv_iter, total_time, shuffle, random_state,
+                 best_resampler = None, best_resampler_params = None):
         # call super() with appropriate parameters
-        super().__init__(best_estimator, cv_results, cv_iter, total_time,
-                         shuffle, random_state, resampler = best_resampler,
-                         best_resampler_kwargs = resampler_kwargs)
-        # get best_cv_score (best mean cv score). note best_resampler and
-        # best_resampler_params are simply decorators for returning the
-        # resampler and resampler_params attributes of the abstract parent.
-        self._best_cv_score = max(self._cv_results["mean_cv_score"])
+        super().__init__(best_estimator, best_score, scorer_name, cv_results,
+                         cv_iter, total_time, shuffle, random_state,
+                         best_resampler = best_resampler,
+                         best_resampler_params = best_resampler_params)
+        # get best mean cv score. note best_resampler and best_resampler_params
+        # are simply decorators for returning the resampler and resampler_params
+        # attributes of the BaseCVResults parent class.
+        self._best_mean_cv_score = max(self._cv_results["mean_cv_score"])
         # freeze
         self._freeze()
-
-    """
-    attributes:
-
-   
-    cv_iter                number of validation folds/iterations
-    shuffle                boolean, indicates if data was shuffled before splits
-    random_state           seed (if any) used for data splitting
-    total_time             total running time of the search routine in seconds
-    cv_results             dict with validation results for each model. for each
-                           of the m models trained, each key points to a list of
-                           values where the ith index of each list corresponds
-                           to the ith model trained in the search method. keys:
-
-                           param_name         value of param "name" per model.
-                                              number of column varies with
-                                              parameters passed to search.
-                           resampler          string representing name of the
-                                              resampling class instance/function
-                                              used for each model
-                           rs_param_name      value of resampler param "name"
-                                              for each model. may not have these
-                                              columns if resampler has no kwargs
-                                              or have multiple columns.
-                           foldk_cv_score     model validation scores for the
-                                              kth validation fold, total of 
-                                              cv_iter columns fo cv scores
-                           mean_cv_score      mean model validation score
-                           std_cv_score       sample standard deviation of model
-                                              validation scores; computed with
-                                              ddof = 1. so for k validation
-                                              folds, use denominator k - 1.
-                           rank_cv_score      model ranking by average cv score
-                           foldk_train_score  model training scores for the kth
-                                              validation fold. total of cv_iter
-                                              columns for train scores.
-                           mean_train_score   mean model training score
-                           std_train_score    sample standard deviation of model
-                                              training scores with ddof = 1.
-                           mean_train_time    mean model training times, seconds
-                           mean_rs_time       mean resampling times, seconds
-                           foldk_train_shape  shape of kth fold training set,
-                                              total of cv_iter columns
-                           foldk_rs_shape     shape of kth fold training set
-                                              after application of resampling.
-                                              if no resampling was introduced,
-                                              may not be present, else cv_iter
-                                              total columns with resampling.
-                           foldk_cv_shape     shape of kth fold validation set,
-                                              total of cv_iter columns.
-    
-                           dict values resampler, mean_cv_score, std_cv_score,
-                           rank_cv_score, mean_train_score, std_train_score,
-                           mean_train_time, mean_rs_time may also be accessed
-                           directly as instance attributes, except each will
-                           end in an s, i.e. cv_results["resampler"] can be
-                           directly accessed as resamplers. this is preferable
-                           to constantly typing cv_results[some_name].
-    """
-    """
-    best_cv_score          mean cv (validation) score of best_estimator
-    best_resampler         None, class instance implementing fit_resample and
-                           get_params as detailed in the docstring of shizuka.
-                           model_selection.resampled_cv, or a function.
-                           resampler used (if any) with best_estimator.
-    best_resampler_params  None or dict. if resampler is class instance that
-                           implements fit_resample and get_params, then value
-                           will be the dict returned by object's get_params
-                           method. if the resampler is a function, then value
-                           will be the dict of any keyword arguments passed.
-                           params for resampler used with best_estimator.
-    """
+        
     ## attribute decorators ##
     @property
-    def best_resampler(self):
-        """
+    def best_mean_cv_score(self):
+        """The average validation score of :attr:`best_estimator`.
 
+        :rtype: float
         """
-        return self._resampler
-
-    @property
-    def best_resampler_params(self):
-        """Best parameters passed to the :attr:`best_resampler`.
-
-        :returns: A dict of keyword arguments passed to :attr:`best_resampler`
-            used with the best performing model.
-        :rtype: dict
-        """
-        return self._resampler_params
+        return self._best_mean_cv_score
 
     @property
     def resamplers(self):
         """The resamplers used in the hyperparameter search routine.
 
-        :returns: A list of string names of the resamplers used
-        :rtype: list
+        :returns: A :class:`numpy.ndarray` of string names of the resamplers used
+        :rtype: :class:`numpy.ndarray`
         """
         return self._cv_results["resampler"]
 
     @property
-    def mean_cv_scores(self): return self._cv_results["mean_cv_score"]
+    def mean_cv_scores(self):
+        """Average model validation scores.
+
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["mean_cv_score"]
 
     @property
-    def std_cv_scores(self): return self._cv_results["std_cv_score"]
+    def std_cv_scores(self):
+        """Sample standard deviations of validation scores for each model.
+
+        Sample standard deviations computed using :func:`numpy.std` with
+        ``ddof = 1``.
+
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["std_cv_score"]
 
     @property
-    def rank_cv_scores(self): return self._cv_results["rank_cv_score"]
+    def rank_cv_scores(self):
+        """Model rankings by average validation score.
+
+        :returns: A :class:`numpy.ndarray` of model rankings by average
+            validation score, where each ranking is a natural number and the
+            best rank is 1.
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["rank_cv_score"]
 
     @property
-    def mean_train_scores(self): return self._cv_results["mean_train_score"]
+    def rank_train_scores(self):
+        """Model rankings by average training score.
+
+        :returns: A :class:`numpy.ndarray` of model rankings by average
+            training score, where each ranking is a natural number and the
+            best rank is 1.
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["rank_train_score"]
 
     @property
-    def std_train_scores(self): return self._cv_results["std_train_score"]
+    def mean_train_scores(self):
+        """Average model training scores.
+
+        :rtype: :class:`numpy.ndarray`
+        """
+
+        return self._cv_results["mean_train_score"]
 
     @property
-    def mean_train_times(self): return self._cv_results["mean_train_time"]
+    def std_train_scores(self):
+        """Sample standard deviations of training scores for each model.
+
+        Sample standard deviations computed using :func:`numpy.std` with
+        ``ddof = 1``.        
+
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["std_train_score"]
+
+    @property
+    def mean_train_times(self):
+        """Average model training times, in seconds.
+
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["mean_train_time"]
         
     @property
-    def mean_rs_times(self): return self._cv_results["mean_rs_time"]
+    def mean_rs_times(self):
+        """Average model resampling times, in seconds.
         
+        :rtype: :class:`numpy.ndarray`
+        """
+        return self._cv_results["mean_rs_time"]
+
     @property
     def cv_results_df(self):
         """Returns :attr:`cv_results` as a :class:`pandas.DataFrame`.
 
         Syntactic sugar for returning :attr:`cv_results` attribute as a 
-        :class:`pandas.DataFrame` with ``n_1 * ... n_m`` models, with a row for
-        each model/parameter combination, where there are ``m`` parameters with
-        ``n_i`` values for the ``i``th parameter. Note that the number of
-        columns may change, depending on the number of cross-validation folds
-        chosen and whether resampling was used.
+        :class:`pandas.DataFrame` with ``M`` rows, where results for each model
+        /parameter set combination are placed in each row. ``M`` depends on the
+        hyperparameter search routine used: for example, if an exhaustive grid
+        search were used with ``m`` hyperparameters, where the ``i``\ th
+        hyperparameter is provided ``n_i`` values to search through, then it is
+        clear that ``M = n_1 * ... n_m``. 
 
-        For example, following the format of the scikit-learn
-        :class:`sklearn.model_seklection.GridSearchCV` example, the
-        :class:`pandas.DataFrame` could have a header format given by
+        Header names, as in the illustration below, correspond to keys in
+        :attr:`cv_results`.
 
         ::
 
@@ -831,42 +842,16 @@ class SearchCVResults(BaseCVResults):
           | param_kernel | param_gamma | ... | mean_cv_score | std_cv_score | ...
           |--------------|-------------|-   -|---------------|--------------|-
 
+        .. note::
+
+           Depending on the number of cross-validation folds chosen and whether
+           resampling was used or not, the number of columns in
+           :attr:`cv_results_df`  may change.
+
+        :rtype: :class:`pandas.DataFrame`
         """
         return DataFrame(self._cv_results)
 
-    def __repr__(self):
-        """
-        defines textual representation of SearchCVResults. text wrapping built
-        in to prevent input from flying off the screen. unlike BaseCVResults,
-        cv_results is not shown, as it may be too large to be meaningfully read.
-        instead, only the columns resampler, mean_cv_score, std_cv_score,
-        rank_cv_score, mean_train_score, std_train_score, mean_train_time, and 
-        mean_rs_time will be shown, and as if they were instance attributes.
-        that is, for example, cv_results["rank_cv_score"] will appear as an
-        attribute rank_cv_scores, in the style of decorators for cv_results.
-
-        output is in the sklearn repr style, i.e.
-
-        SearchCVResults(... tbd
-        """
-        # get unwrapped, raw output from _raw__repr__
-        out_str = self._raw__repr__()
-        # add the columns in cv_results that can be accessed as attributes
-        out_str = out_str + "resamplers=" + repr(self.resamplers) + ", " + \
-            "mean_cv_scores=" + repr(self.mean_cv_scores) + ", std_cv_scores=" \
-            + repr(self.std_cv_scores) + ", rank_cv_scores=" + \
-            repr(self.rank_cv_scores) + ", mean_train_scores=" + \
-            repr(self.mean_train_scores) + ", std_train_scores=" + \
-            repr(self.std_train_scores) + ", mean_train_times=" + \
-            repr(self.mean_train_times) + ", mean_rs_times=" + \
-            repr(self.mean_rs_times) + ")"
-        # use len(self.__class__.__name__) + 1 to determine value of the
-        # subsequent_indent parameter. use textwrap.fill to wrap the text
-        # and join lines together at the end
-        return fill(out_str, width = 80, subsequent_indent = " " * \
-                    (len(self.__class__.__name__) + 1))
-
-    def __str__(self): return self.__repr__()
 
 if __name__ == "__main__":
     print("{0}: do not run module as script".format(__module__), file = stderr)
