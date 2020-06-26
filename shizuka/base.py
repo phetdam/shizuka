@@ -723,7 +723,7 @@ class SearchCVResults(BaseCVResults):
     :type best_resampler: object or function, optional
     :param best_resampler_params: Of all keyword argument combinations, the
         best combination passed to ``best_resampler``. Ignored and set to
-        ``None`` if ``resampler`` is ``None``. Default ``None`.
+        ``None`` if ``resampler`` is ``None``. Default ``None``.
     :type best_resampler_params: dict, optional
     """
     def __init__(self, best_estimator, best_score, scorer_name, cv_results,
