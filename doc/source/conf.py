@@ -9,7 +9,7 @@
 #
 # 06-25-2020
 #
-# change pygments highlighting style to emacs.
+# change pygments highlighting style to emacs and add dask docs to intersphinx.
 #
 # 06-24-2020
 #
@@ -85,6 +85,7 @@ autosummary_generate = True
 # determines which external package documentations to link to. thanks to the
 # link here: https://gist.github.com/bskinn/0e164963428d4b51017cebdb6cda5209
 intersphinx_mapping = {
+    "das": ("https://docs.dask.org/en/latest/", None),
     "python": ("https://docs.python.org/3", None),
     "matplotlib": ("https://matplotlib.org/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),

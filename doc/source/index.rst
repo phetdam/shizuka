@@ -8,6 +8,7 @@
    06-25-2020
 
    added small intro blurb to the document + note about dependency list changes.
+   added model_selection module to autosummary; time for more warnings.
 
    06-24-2020
 
@@ -45,6 +46,7 @@ A package for simplifying the analysis of statistical model performance, providi
    :toctree: modules
 
    shizuka.base
+   shizuka.model_selection
    shizuka.utils
 
 .. [#] Yes, I really did just make this up. Not kidding.
