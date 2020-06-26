@@ -2,11 +2,11 @@
 # to the more general methods available in sklearn or other libraries.
 #
 # Changelog:
-#
-# 06-25-2020
+# 
+# 06-26-2020
 #
 # add warning about needing dask.array.Array for out-of-core computation + fix
-# :doc: reference to module_compat.rst.
+# :doc: reference to module_compat.rst. corrected imports from base.py.
 #
 # 06-24-2020
 #
@@ -78,7 +78,7 @@ from sklearn.model_selection import KFold
 from sys import stderr
 from time import time
 
-from .base import shizukaBaseCV, shizukaSearchCV
+from .base import CoreCVResults, SearchCVResults
 
 ## internal constants
 # supported internal scoring methods for resampled_cv

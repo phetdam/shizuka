@@ -327,30 +327,30 @@ class CoreCVResults(BaseCVResults):
         described below.
 
         ``train_scores``
-          A list of per-fold estimator training scores.
+            A list of per-fold estimator training scores.
 
         ``cv_scores``
-          A list of per-fold estimator validation scores.
+            A list of per-fold estimator validation scores.
 
         ``train_times``
-          A list of per-fold estimator training times in seconds.
+            A list of per-fold estimator training times in seconds.
 
         ``resampling_times``
-          A list of per-fold times in seconds needed for resampling.
+            A list of per-fold times in seconds needed for resampling.
 
         ``resampled_shapes``
-          A list of per-fold resampled training data shapes, where each ``i``\ 
-          th fold data shape is ``(n_rs_samples_i, n_features)``. If 
-          ``resampler`` is ``None``, then ``cv_results["resampled_shapes"]`` is
-          ``None`` instead of a list.
+            A list of per-fold resampled training data shapes, where each ``i``\ 
+            th fold data shape is ``(n_rs_samples_i, n_features)``. If 
+            ``resampler`` is ``None``, then ``cv_results["resampled_shapes"]``
+            is ``None`` instead of a list.
 
         ``train_shapes``
-          A list of per-fold training data shapes, where each ``i``\ the fold
-          data shape is ``(n_train_samples_i, n_features)``.
+            A list of per-fold training data shapes, where each ``i``\ the fold
+            data shape is ``(n_train_samples_i, n_features)``.
 
         ``cv_shapes``
-          A list of per-fold validation data shapes, where each ``i``\ th fold
-          data shape is ``(n_val_samples_i, n_features)``.
+            A list of per-fold validation data shapes, where each ``i``\ th fold
+            data shape is ``(n_val_samples_i, n_features)``.
 
     :type cv_results: dict
     :param cv_iter: Number of validation/folds iterations
@@ -360,8 +360,8 @@ class CoreCVResults(BaseCVResults):
     :param shuffle: ``True`` if data was shuffled before being split into
         training and validation folds, ``False`` otherwise.
     :type shuffle: bool
-    :param random_state: Seed used for k-fold data splitting, if any. ``None``
-        if no fixed seed was used.
+    :param random_state: Seed used for k-fold data splitting. If no seed was 
+        provided, then defaults to ``None``.
     :type random_state: int or None
     :param resampler: Class instance implementing :meth:`fit_resample` and
         :meth:`get_params` methods like the resampling classes defined in the
@@ -568,99 +568,127 @@ class SearchCVResults(BaseCVResults):
         key is associated with is described below.
         
         ``param_name``
-          For any model hyperparameter ``name``, a list of the values that
-          ``name`` took for each model. The number of these key-value pairs
-          depends on the number of hyperparameters passed to the search routine.
+            For any model hyperparameter ``name``, a list of the values that
+            ``name`` took for each model. The number of these key-value pairs
+            depends on the number of hyperparameters passed to the search
+            routine.
 
         ``resampler``
-          A list of strings representing the name of the resampling class
-          instance or function used for resampling the model's training data.
+            A list of strings representing the name of the resampling class
+            instance or function used for resampling the model's training data.
 
         ``rs_param_name``
-          For any resampler keyword argument ``name``, a list of the values
-          that ``name`` took for each resampler used on a particular model's
-          training data. May contain values of :class:`numpy.nan` to indicate
-          that a particular keyword argument is not one that is accepted by a
-          resampler, as some keyword arguments may be ``None``.
+            For any resampler keyword argument ``name``, a list of the values
+            that ``name`` took for each resampler used on a particular model's
+            training data. May contain values of :class:`numpy.nan` to indicate
+            that a particular keyword argument is not one that is accepted by a
+            resampler, as some keyword arguments may be ``None``.
 
-          .. note::
+            .. note::
 
-             If none of the resamplers take keyword arguments, it is possible
-             that these key-value mappings will not be present in
-             ``cv_results``.
+               If none of the resamplers take keyword arguments, it is possible
+               that these key-value mappings will not be present in
+               ``cv_results``.
 
         ``foldk_cv_score``
-          A list of model validation scores for the ``k``\ th validation fold,
-          where ``k`` is in the range ``[1, cv_iter]``.
+            A list of model validation scores for the ``k``\ th validation fold,
+            where ``k`` is in the range ``[1, cv_iter]``.
 
         ``mean_cv_score``
-          A list of model validation score averages, i.e. the average of each
-          model's ``cv_iter`` per-fold validation scores.
+            A list of model validation score averages, i.e. the average of each
+            model's ``cv_iter`` per-fold validation scores.
 
         ``std_cv_score``
-          A list of model validation score sample standard deviations, computed
-          using :func:`numpy.std` with ``ddof = 1``.
+            A list of model validation score sample standard deviations,
+            computed using :func:`numpy.std` with ``ddof = 1``.
 
         ``rank_cv_score``
-          A list of model rankings, by mean cross-validation score. The highest
-          rank model will have rank 1, the lowest rank model will have rank 
-          ``M``.
+            A list of model rankings, by mean cross-validation score. The
+            highest rank model will have rank 1, the lowest rank model will have
+            rank ``M``.
 
         ``foldk_train_score``
-          A list of model training scores for the ``k``\ th validation fold,
-          where ``k`` is in the range ``[1, cv_iter]``.
+            A list of model training scores for the ``k``\ th validation fold,
+            where ``k`` is in the range ``[1, cv_iter]``.
 
         ``mean_train_score``
-          A list of model training score averages, i.e. the average of each
-          model's ``cv_iter`` per-fold training scores.
+            A list of model training score averages, i.e. the average of each
+            model's ``cv_iter`` per-fold training scores.
 
         ``std_train_score``
-          A list of model training score sample standard deviations, computed
-          using :func:`numpy.std` with ``ddof = 1``.
+            A list of model training score sample standard deviations, computed
+            using :func:`numpy.std` with ``ddof = 1``.
+
+        ``rank_train_score``
+            A list of model rankings, by mean training score. The highest rank
+            model will have rank 1, the lowest rank model will have rank ``M``.
+
+            .. warning::
+
+               If you are trying to select the model with the best validation
+               performance, look at the rankings due to ``rank_cv_score`` instead.
+               A model's training performance is biased upwards.
     
         ``mean_train_time``
-          A list of average model training times, in seconds.
+            A list of average model training times, in seconds.
 
-        foldk_train_shape
-          A list of shapes for the training data used during the ``k``\ th
-          validation fold, where ``k`` is in the range ``[1, cv_iter]``. The
-          shape for the ``i``\ th model has the format
-          ``(n_train_samples_i, n_features)``.
+        ``mean_rs_time``
+            A list of average resampling times, in seconds.
+
+        ``foldk_train_shape``
+            A list of shapes for the training data used during the ``k``\ th
+            validation fold, where ``k`` is in the range ``[1, cv_iter]``. The
+            shape for the ``i``\ th model has the format
+            ``(n_train_samples_i, n_features)``.
 
         ``foldk_rs_shape``
-          A list of shapes for the resampled training data used during the
-          ``k``\ th validation fold , where ``k`` is in the range 
-          ``[1, cv_iter]``. The shape for the ``i``\ th model has the format
-          ``(n_rs_samples_i,  n_features)``.
+            A list of shapes for the resampled training data used during the
+            ``k``\ th validation fold , where ``k`` is in the range 
+            ``[1, cv_iter]``. The shape for the ``i``\ th model has the format
+            ``(n_rs_samples_i,  n_features)``.
 
-        mean_rs_time
+        ``foldk_cv_shape``
+           A list of shapes for the validation data used during the ``k``\ th
+           validation fold, where ``k`` is in the range ``[1, cv_iter]``. The
+           shape for the ``i``\ th model has the format
+           ``(n_val_samples_i, n_features)``.
 
-                           mean_rs_time       mean resampling times, seconds
-                           foldk_train_shape  shape of kth fold training set,
-                                              total of cv_iter columns
-                           foldk_rs_shape     shape of kth fold training set
-                                              after application of resampling.
-                                              if no resampling was introduced,
-                                              may not be present, else cv_iter
-                                              total columns with resampling.
-                           foldk_cv_shape     shape of kth fold validation set,
-                                              total of cv_iter columns.
-        cv_iter            number of validation folds/iterations
-        total_time         total running time of the search routine in seconds
-        shuffle            boolean, indicates if data was shuffled before being
-                           split into training and validation folds
-        random_state       None or seed (if any) used for k-fold data splitting
-        resampler          None, class instance implementing fit_resample and
-                           get_params as detailed in the docstring of shizuka.
-                           model_selection.resampled_cv, or a function.
-                           resampler used (if any) with best_estimator.
-        resampler_params   None or dict. if resampler is class instance that
-                           implements fit_resample and get_params, then value
-                           will be the dict returned by object's get_params
-                           method. if the resampler is a function, then value
-                           will be the dict of any keyword arguments passed.
-                           params for resampler used with best_estimator.
-        """
+    :type cv_results: dict
+    :param cv_iter: Number of validation folds/iterations
+    :type cv_iter: int
+    :param total_time: Total runtime of cross-validated hyperparameter search
+        routine, in seconds
+    :type total_time: int
+    :param shuffle: ``True`` if data was shuffled before being split into
+        training and validation folds, ``False`` otherwise.
+    :type shuffle: bool
+    :param random_state:
+    :type random_state: Seed used for k-fold data splitting. If no seed was 
+        provided, then defaults to ``None``.
+    :type random_state: int or None
+    :param resampler: Class instance with :meth:`fit_resample` and
+        :meth:`get_params` methods like the resampling classes defined in
+        ``imblearn``, or a custom-made resampling function. Default
+        ``None``.
+    :type resampler: object or function, optional
+    :param resampler_kwargs: Keyword arguments passed to ``resampler``. Ignored
+        and set to ``None`` if ``resampler`` is ``None``. Default ``None`.
+    :type resampler_kwargs: dict, optional
+    """
+    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
+                 random_state, resampler = None, resampler_kwargs = None):
+
+        # call super() with appropriate parameters
+        super().__init__(best_estimator, cv_results, cv_iter, total_time,
+                         shuffle, random_state, resampler = resampler,
+                         resampler_kwargs = resampler_kwargs)
+        # get best_cv_score (best mean cv score). note best_resampler and
+        # best_resampler_params are simply decorators for returning the
+        # resampler and resampler_params attributes of the abstract parent.
+        self.best_cv_score = max(self.cv_results["mean_cv_score"])
+        # freeze
+        self._freeze()
+
     """
     attributes:
 
@@ -736,20 +764,6 @@ class SearchCVResults(BaseCVResults):
                            directly accessed as resamplers. this is preferable
                            to constantly typing cv_results[some_name].
     """
-    def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
-                 random_state, resampler = None, resampler_kwargs = None):
-
-        # call super() with appropriate parameters
-        super().__init__(best_estimator, cv_results, cv_iter, total_time,
-                         shuffle, random_state, resampler = resampler,
-                         resampler_kwargs = resampler_kwargs)
-        # get best_cv_score (best mean cv score). note best_resampler and
-        # best_resampler_params are simply decorators for returning the
-        # resampler and resampler_params attributes of the abstract parent.
-        self.best_cv_score = max(self.cv_results["mean_cv_score"])
-        # freeze
-        self._freeze()
-
     ## attribute decorators ##
     @property
     def best_resampler(self): return self._resampler
