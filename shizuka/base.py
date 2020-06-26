@@ -12,6 +12,8 @@
 # operations. renamed resampler and resampler_kwargs in all results classes
 # to best_resampler and best_resampler_params for consistency. rewrote
 # _raw__repr__ to simply use all the __init__ arguments for representation.
+# fix _raw__repr__ implementation to correctly use shorthand substitutions
+# for cv_results, best_estimator, and best_resampler args.
 #
 # 06-25-2020
 #
@@ -187,6 +189,13 @@ class BaseCVResults(FrozenClass):
            :meth:`__repr__` method in case I change my mind on how subclasses
            should be represented.
 
+        .. note::
+
+           For brevity, the values for :attr:`best_estimator` and 
+           :attr:`best_resampler` are substituted with the function/class
+           instance name and the value of :attr:`cv_results` is substituted
+           with ``"..."``
+
         :returns: Unwrapped string representation of the
             :class:`BaseCVResults` instance
         :rtype: str
@@ -201,12 +210,18 @@ class BaseCVResults(FrozenClass):
             best_rs_name = self._best_resampler.__name__
         else: best_rs_name = self._best_resampler.__class__.__name__
         # use getfullargspec to get all __init__ arguments; drop self arg
-        init_args = getfullargspec(self.__init__)
+        init_args = getfullargspec(self.__init__).args
         init_args.pop(0)
         # build the output string by collecting private attributes
-        out_str = out_str + "("
+        out_str = self.__class__.__name__ + "("
         for arg in init_args:
-            out_str = out_str + arg + "=" + getattr(self, "_" + arg) + ", "
+            # special substitutions for brevity
+            if arg == "best_estimator": str_val = best_est_name
+            elif arg == "cv_results": str_val = "..."
+            elif arg == "best_resampler": str_val = best_rs_name
+            # else use the repr() value
+            else: str_val = repr(getattr(self, "_" + arg))
+            out_str = out_str + arg + "=" + str_val + ", "
         # remove last ", ", replace with ")" and return
         return out_str[:-2] + ")"
         
@@ -308,7 +323,7 @@ class BaseCVResults(FrozenClass):
     def best_resampler(self):
         """The best resampler used with :attr:`best_estimator`.
 
-        Is ``None`` iIf the best average validation performance was with no 
+        Is ``None`` if the best average validation performance was with no 
         resampler.
 
         :rtype: object or function
