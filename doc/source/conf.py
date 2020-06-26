@@ -7,6 +7,10 @@
 #
 # Changelog:
 #
+# 06-26-2020
+#
+# add undoc-members configuration to autodoc_default_options.
+#
 # 06-25-2020
 #
 # change pygments highlighting style to emacs and add dask docs to intersphinx.
@@ -63,12 +67,13 @@ exclude_patterns = []
 
 # set default options for autodoc directives. include __repr__ special member
 # and any private members (names prepended with _), show class inheritance,
-# but leave out any class members that are not documented with a docstring.
+# and list any members that do not have an associated docstring.
 #
 # note: since ignore-module-all is not set, only the members in __all__ in
 # __init__.py will be looked for and their order will be maintained.
 autodoc_default_options = {
     "members": True,
+    "undoc-members": True,
     "private-members": True,
     "show-inheritance": True,
     "special-members": "__repr__"
