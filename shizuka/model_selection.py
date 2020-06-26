@@ -3,6 +3,17 @@
 #
 # Changelog:
 #
+# 06-25-2020
+#
+# add warning about needing dask.array.Array for out-of-core computation + fix
+# :doc: reference to module_compat.rst.
+#
+# 06-24-2020
+#
+# removed _MODULE_NAME, using __module__ instead. renamed resampled_cv to
+# resampled_fit_cv. started rewriting resampled_fit_cv docstring and added more
+# keyword arguments.
+#
 # 01-25-2020
 #
 # removed some old commented code that is no longer in use and cleaned up the
@@ -49,17 +60,13 @@
 # initial creation. copied from resampled_cv.py from tomodachi_proj project, and
 # then rebranded. started work on the resampled_cv function; added error checks.
 #
-__doc__ = """
-contains methods for more specialized model selection.
+__doc__ = """Contains methods for more specialized model selection.
 
-not intended as a replacement for a more complete machine learning package like
-sklearn, but as a complement for the more general model selection routines.
+Not intended as a replacement for a more complete machine learning package like
+scikit-learn, but as a complement for more general model selection routines.
 """
 
-_MODULE_NAME = "shizuka.model_selection"
-
 from abc import ABCMeta
-from .base import shizukaBaseCV
 from numpy import array, ravel
 from pandas import DataFrame
 from imblearn.combine import SMOTEENN
@@ -71,29 +78,73 @@ from sklearn.model_selection import KFold
 from sys import stderr
 from time import time
 
+from .base import shizukaBaseCV, shizukaSearchCV
+
 ## internal constants
-# accepted scoring methods for resampled_cv
+# supported internal scoring methods for resampled_cv
 _scorings = ["r2", "accuracy"]
 # supported internally specified resampling methods for resampled_cv
 _samplers = {"SMOTE": SMOTE, "ADASYN": ADASYN, "SMOTEENN": SMOTEENN}
 
-def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
-                 resampler_kwargs = None, shuffle = False, random_state = None,
-                 cv = 3, n_jobs = 1):
-    """
-    trains supervised learning models with cross-validation and optional
-    resampling. avoids the naive error of validating with a fold of resampled
-    training data; the original training data used in training folds is copied 
-    and validated on the untouched validation fold. best used as a single
-    model training with or without resampling using k-fold cross-validation.
+def resampled_fit_cv(est, X_train, y_train, fitter = None, fitter_kwargs = None,
+                     predictor = None, predictor_kwargs = None, scorer = None,
+                     scorer_kwargs = None, resampler = None,
+                     resampler_kwargs = None, shuffle = False, cv = 3,
+                     n_jobs = 1, random_state = None):
+    """Cross-validated model training, with optional resampling.
 
-    returns a shizuka.base.shizukaBaseCV instance. see shizuka.base for details.
+    Trains scikit-learn compatible supervised classifiers with cross-validation
+    and optional resampling. Avoids the naive error of validating with a fold of
+    resampled training data, as here the original training data used in training
+    folds is copied and validated on the untouched validation fold. Best used
+    for training a single model with or without resampling using k-fold cross-
+    validation.
 
-    requires the package imblearn, which can be found on PyPI.
+    Using built-in resampling routines requires the package ``imblearn``, which
+    can be found on PyPI.
 
-    note: standard deviation of CV scores is computed with denominator cv - 1.
+    .. note::
 
-    parameters:
+       Standard deviation of cross-validation scores is computed with
+       denominator ``k - 1``, if ``k`` is the number of cross-validation folds.
+
+    .. warning::
+
+       ``imblearn`` resamplers only work with data objects castable to
+       :class:`numpy.ndarray` and therefore cannot support distributed arrays
+       or objects larger than memory. Use ``"dask"`` backend with
+       :func:`resampled_fit_cv` and pass in :class:`dask.array.Array` to 
+       ``X_train``, ``y_train`` to support out-of-core computation.
+       
+
+    :param est: An unfitted compatible or scikit-learn compatible classifier.
+
+        .. note::
+
+           The notion of a model being "compatible" or "scikit-learn compatible"
+           is defined in :doc:`..//model_compat`. Please read to
+           ensure that whatever is being passed into ``est`` fits either of
+           these notions.
+    :type est: object
+    :param X_train: Training data matrix with shape ``(n_samples, n_features)``,
+        castable to :class:`numpy.ndarray`. Must fit in memory. If not of type
+        :class:`numpy.ndarray` with float elements, a conversion will be
+        performed internally.
+    :type X_train: array-like
+    :param y_train: Training response matrix/vector with shape ``(n_samples,)``
+        or ``(n_samples, n_outputs)``, castable to :class:`numpy.ndarray`. Must
+        fit in memory. If not of type :class:`numpy.ndarray`, with float
+        elements, a conversion will be performed internally.
+    :type y_train: array-like
+    :param fitter: The method used to fit ``est`` if ``est`` does not implement
+        a ``fit`` method. Even if ``est`` implements a ``fit`` method, if
+        ``fitter`` is not ``None``, then ``fitter`` will be called. Must have
+        the call signature
+
+        .. code:: python
+
+           (X_train: numpy.ndarray, y_train: numpy.ndarray, **fitter_kwargs) -> object
+
 
     est               sklearn regression or classification estimator, a subclass
                       of ClassifierMixin or RegressorMixin from sklearn.base.
@@ -387,7 +438,47 @@ def resampled_cv(est, X_train, y_train, scoring = None, resampler = None,
                          shuffle, random_state, resampler = resampler,
                          resampler_kwargs = resampler_kwargs)
 
+def resampled_grid_search_cv(est, X_train, y_train, param_grid, scoring = None,
+                             resamplers = None, rs_param_dicts = None,
+                             shuffle = False, random_state = None, cv = 3,
+                             n_jobs = 1):
+    """
+    given a hypothesis set denoted by an unfitted estimator, training feature
+    matrix and response vector, grid (dict) of parameters for the estimator,
+    with optional list of resampling objects/functions and list of grids (dicts)
+    of named parameters for each resampling object/function, perform a grid
+    search over all possible parameters and resampler + resampler kwarg
+    combinations with cross-validation to choose the best set of parameters for
+    the model, the best resampler, and the best resampler parameters.
+
+    returns a shizuka.base.shizukaSearchCV instance. details in shizuka.base.
+
+    like resampled_cv, requires imblearn, which can be downloaded from PyPI.
+
+    notes: standard deviation of CV scores is computed iwth denomiator cv - 1.
+           since an exhaustive search is performed, it is highly recommended to
+           limit the number of grid search parameters for the estimator and
+           resamplers.
+
+    parameters:
+
+    est               sklearn regression or classification estimator, a subclass
+                      of ClassifierMixin or RegressorMixin from sklearn.base.
+                      should be unfitted and initialized with hyperparameters.
+    X_train           2d training feature matrix, required to be DataFrame
+    y_train           1d training response vector, same number of observations
+                      as X_train, ex. ndarray, Series, or one-column DataFrame.
+    param_grid        dictionary where each key corresponds to a named parameter
+                      in est, with an associated iterable of values to search.
+    scoring           optional metric used to compute score of the estimator, 
+                      default None which indicates that the estimator's builtin 
+                      score function is to be used. function only supports 
+                      "accuracy" for classifiers and "r2" for regressors.
+
+                      note: currently ignored. uses only default scoring.
+    """
+    pass
+
 # main
 if __name__ == "__main__":
-    print("{0}: do not run module as script".format(_MODULE_NAME),
-          file = stderr)
+    print("{0}: do not run module as script".format(__module__), file = stderr)
