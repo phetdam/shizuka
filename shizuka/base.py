@@ -570,14 +570,14 @@ class CoreCVResults(BaseCVResults):
         Syntactic sugar for returning the :attr:`cv_results` attribute as a 
         :class:`pandas.DataFrame`. Each row corresponds to a validation
         iteration (fold), so the :class:`pandas.DataFrame` will have
-        :attr:`cv_iter` rows. The header names below corresponds to keys in
-        :attr:`cv_results`.
+        :attr:`cv_iter` rows. The header names in the table excerpt below
+        correspond to keys in :attr:`cv_results`.
 
-        ::
-
-            |--------------|-----------|-   -|------------------|-----------|
-            | train_scores | cv_scores | ... | resampled_shapes | cv_shapes |
-            |--------------|-----------|-   -|------------------|-----------|
+        +--------------+-----------+-----+------------------+------------+
+        | train_scores | cv_scores | ... | resampled_shapes | cv_shapes  |
+        +==============+===========+=====+==================+============+
+        | 0.837432     | 0.7823626 | ... | (3487, 15)       | (1000, 15) |
+        +--------------+-----------+-----+------------------+------------+
 
         :rtype: :class:`pandas.DataFrame`
         """
@@ -848,14 +848,14 @@ class SearchCVResults(BaseCVResults):
         hyperparameter is provided ``n_i`` values to search through, then it is
         clear that ``M = n_1 * ... n_m``. 
 
-        Header names, as in the illustration below, correspond to keys in
+        Header names, as in the table excerpt below, correspond to keys in
         :attr:`cv_results`.
 
-        ::
-
-          |--------------|-------------|-   -|---------------|--------------|-
-          | param_kernel | param_gamma | ... | mean_cv_score | std_cv_score | ...
-          |--------------|-------------|-   -|---------------|--------------|-
+        +---------+--------------+-----+------------+--------------+-----+
+        | param_C | param_kernel | ... | resamplers | std_cv_score | ... |
+        +=========+==============+=====+============+==============+=====+
+        | 0.6     | 'rbf'        | ... | 'ADASYN'   | 0.873434     | ... |
+        +---------+--------------+-----+------------+--------------+-----+
 
         .. note::
 
