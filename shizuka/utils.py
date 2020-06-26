@@ -5,7 +5,7 @@
 # 06-26-2020
 #
 # updated is_method check; comparison must be done with "<class 'method'>", not
-# "method" as i had initially assumed (i didn't check).
+# "method" as i had initially assumed (i didn't check). updated docstrings.
 #
 # 06-24-2020
 #
@@ -20,7 +20,7 @@ from sys import stderr
 __doc__ = """Contains utility functions used throughout the package."""
 
 def is_method(obj):
-    """Determines if an object is an bound method or not.
+    """Determines if an object is a bound method or not.
 
     :param obj: Object to evaluate
     :type obj: object
@@ -33,7 +33,6 @@ def is_compat(est):
     """Determines if an estimator is compatible with the ``shizuka`` API.
 
     The exact notion of "compatibility" is covered in :doc:`../model_compat`.
-    Please read that page for details.
 
     .. note::
 
