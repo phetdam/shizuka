@@ -13,9 +13,9 @@ shizuka.base
 
    .. autosummary::
    
-      shizukaBaseCV
-      shizukaCoreCV
-      shizukaSearchCV
+      BaseCVResults
+      CoreCVResults
+      SearchCVResults
    
    
 

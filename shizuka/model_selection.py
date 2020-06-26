@@ -6,7 +6,8 @@
 # 06-26-2020
 #
 # add warning about needing dask.array.Array for out-of-core computation + fix
-# :doc: reference to module_compat.rst. corrected imports from base.py.
+# :doc: reference to module_compat.rst. corrected imports from base.py. changed
+# call signature of resampled_fit_cv to include options for parallel backend.
 #
 # 06-24-2020
 #
@@ -68,6 +69,7 @@ scikit-learn, but as a complement for more general model selection routines.
 
 from abc import ABCMeta
 from numpy import array, ravel
+from numpy.random import RandomState
 from pandas import DataFrame
 from imblearn.combine import SMOTEENN
 from imblearn.over_sampling import ADASYN, SMOTE
@@ -90,8 +92,8 @@ def resampled_fit_cv(est, X_train, y_train, fitter = None, fitter_kwargs = None,
                      predictor = None, predictor_kwargs = None, scorer = None,
                      scorer_kwargs = None, resampler = None,
                      resampler_kwargs = None, shuffle = False, cv = 3,
-                     n_jobs = 1, random_state = None):
-    """Cross-validated model training, with optional resampling.
+                     n_jobs = None, backend = None, random_state = None):
+    """Scalable cross-validated model training, with optional resampling.
 
     Trains scikit-learn compatible supervised classifiers with cross-validation
     and optional resampling. Avoids the naive error of validating with a fold of

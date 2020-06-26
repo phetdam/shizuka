@@ -666,50 +666,35 @@ class SearchCVResults(BaseCVResults):
     :type random_state: Seed used for k-fold data splitting. If no seed was 
         provided, then defaults to ``None``.
     :type random_state: int or None
-    :param resampler: Class instance with :meth:`fit_resample` and
-        :meth:`get_params` methods like the resampling classes defined in
-        ``imblearn``, or a custom-made resampling function. Default
-        ``None``.
-    :type resampler: object or function, optional
-    :param resampler_kwargs: Keyword arguments passed to ``resampler``. Ignored
-        and set to ``None`` if ``resampler`` is ``None``. Default ``None`.
-    :type resampler_kwargs: dict, optional
+    :param best_resampler: Of all the resamplers tried, the best resampler. Must
+        be a class instance with :meth:`fit_resample` and :meth:`get_params`
+        methods like the resampling classes defined in ``imblearn``, or a custom
+        resampling function. Default ``None``.
+    :type best_resampler: object or function, optional
+    :param best_resampler_kwargs: Of all keyword argument combinations, the
+        best combination passed to ``best_resampler``. Ignored and set to
+        ``None`` if ``resampler`` is ``None``. Default ``None`.
+    :type best_resampler_kwargs: dict, optional
     """
     def __init__(self, best_estimator, cv_results, cv_iter, total_time, shuffle,
-                 random_state, resampler = None, resampler_kwargs = None):
+                 random_state, best_resampler = None,
+                 best_resampler_kwargs = None):
 
         # call super() with appropriate parameters
         super().__init__(best_estimator, cv_results, cv_iter, total_time,
-                         shuffle, random_state, resampler = resampler,
-                         resampler_kwargs = resampler_kwargs)
+                         shuffle, random_state, resampler = best_resampler,
+                         best_resampler_kwargs = resampler_kwargs)
         # get best_cv_score (best mean cv score). note best_resampler and
         # best_resampler_params are simply decorators for returning the
         # resampler and resampler_params attributes of the abstract parent.
-        self.best_cv_score = max(self.cv_results["mean_cv_score"])
+        self._best_cv_score = max(self._cv_results["mean_cv_score"])
         # freeze
         self._freeze()
 
     """
     attributes:
 
-    best_estimator         best fitted sklearn estimator by average cv score per
-                           validation fold. the final best_estimator is fit on
-                           all the training data with the parameters given by
-                           best_params that were the best performing on average
-                           and the resampler given by best_resampler (if any)
-                           with parameters best_resampler (if any).
-    best_params            [hyper]parameters of best_estimator
-    best_cv_score          mean cv (validation) score of best_estimator
-    best_resampler         None, class instance implementing fit_resample and
-                           get_params as detailed in the docstring of shizuka.
-                           model_selection.resampled_cv, or a function.
-                           resampler used (if any) with best_estimator.
-    best_resampler_params  None or dict. if resampler is class instance that
-                           implements fit_resample and get_params, then value
-                           will be the dict returned by object's get_params
-                           method. if the resampler is a function, then value
-                           will be the dict of any keyword arguments passed.
-                           params for resampler used with best_estimator.
+   
     cv_iter                number of validation folds/iterations
     shuffle                boolean, indicates if data was shuffled before splits
     random_state           seed (if any) used for data splitting
@@ -764,15 +749,45 @@ class SearchCVResults(BaseCVResults):
                            directly accessed as resamplers. this is preferable
                            to constantly typing cv_results[some_name].
     """
+    """
+    best_cv_score          mean cv (validation) score of best_estimator
+    best_resampler         None, class instance implementing fit_resample and
+                           get_params as detailed in the docstring of shizuka.
+                           model_selection.resampled_cv, or a function.
+                           resampler used (if any) with best_estimator.
+    best_resampler_params  None or dict. if resampler is class instance that
+                           implements fit_resample and get_params, then value
+                           will be the dict returned by object's get_params
+                           method. if the resampler is a function, then value
+                           will be the dict of any keyword arguments passed.
+                           params for resampler used with best_estimator.
+    """
     ## attribute decorators ##
     @property
-    def best_resampler(self): return self._resampler
+    def best_resampler(self):
+        """
+
+        """
+        return self._resampler
 
     @property
-    def best_resampler_params(self): return self._resampler_params
+    def best_resampler_params(self):
+        """Best parameters passed to the :attr:`best_resampler`.
+
+        :returns: A dict of keyword arguments passed to :attr:`best_resampler`
+            used with the best performing model.
+        :rtype: dict
+        """
+        return self._resampler_params
 
     @property
-    def resamplers(self): return self._cv_results["resampler"]
+    def resamplers(self):
+        """The resamplers used in the hyperparameter search routine.
+
+        :returns: A list of string names of the resamplers used
+        :rtype: list
+        """
+        return self._cv_results["resampler"]
 
     @property
     def mean_cv_scores(self): return self._cv_results["mean_cv_score"]
