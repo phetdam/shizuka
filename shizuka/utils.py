@@ -2,6 +2,11 @@
 #
 # Changelog:
 #
+# 06-26-2020
+#
+# updated is_method check; comparison must be done with "<class 'method'>", not
+# "method" as i had initially assumed (i didn't check).
+#
 # 06-24-2020
 #
 # initial creation. added functions for checking if an estimator is compatible
@@ -22,7 +27,7 @@ def is_method(obj):
     :returns: ``True`` if ``obj`` is an instance method, ``False`` otherwise
     :rtype: bool
     """
-    return str(type(obj)) == "method"
+    return str(type(obj)) == "<class 'method'>"
 
 def is_compat(est):
     """Determines if an estimator is compatible with the ``shizuka`` API.
