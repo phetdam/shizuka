@@ -1,5 +1,9 @@
 # Changelog:
 #
+# 06-26-2020
+#
+# added ./dist and ./shizuka.egg-info (thanks setuptools) to .gitignore
+#
 # 06-24-2020
 #
 # add emacs autosave files to .gitignore as well.
@@ -9,6 +13,8 @@
 # initial creation. added ./build, __pycache__, and .ipynb_checkpoints ignores.
 
 /build
+/dist
+/shizuka.egg-info
 **/__pycache__
 **/.ipynb_checkpoints
 **/*~
