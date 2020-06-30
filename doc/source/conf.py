@@ -7,6 +7,10 @@
 #
 # Changelog:
 #
+# 06-29-2020
+#
+# added dask.distributed and joblib to intersphinx configuration.
+#
 # 06-26-2020
 #
 # add undoc-members configuration to autodoc_default_options.
@@ -90,7 +94,9 @@ autosummary_generate = True
 # determines which external package documentations to link to. thanks to the
 # link here: https://gist.github.com/bskinn/0e164963428d4b51017cebdb6cda5209
 intersphinx_mapping = {
-    "das": ("https://docs.dask.org/en/latest/", None),
+    "dask": ("https://docs.dask.org/en/latest/", None),
+    "distributed": ("https://distributed.dask.org/en/latest/", None),
+    "joblib": ("https://joblib.readthedocs.io/en/latest/", None),
     "python": ("https://docs.python.org/3", None),
     "matplotlib": ("https://matplotlib.org/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
