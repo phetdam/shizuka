@@ -2,6 +2,13 @@
 
    Changelog:
 
+   07-01-2020
+
+   added more clarification on how to use external functions for fitting,
+   predicting, and scoring models that are compatible but not quasi-scikit-
+   learn compatible. worked on definitions for the instance method signatures
+   for quasi-scikit-learn compatible models.
+
    06-28-2020
 
    edited wording for opening paragraph. changed inline literals for method
@@ -56,17 +63,56 @@ As in the example, it is encouraged that any user-defined model classes take zer
 
 The first line sets ``argnames`` to be a list of all the :meth:`__init__` method keyword argument names, which we may then iterate through and use :func:`getattr` to get the value of each respective keyword argument from the class instance. Note that the definition of :meth:`get_params` above only returns the keyword arguments and values of the :meth:`__init__` method and that a class may define other instance attributes that will not show up in the dict returned by :meth:`get_params`.
 
-Fitting and predicting with the model can be done through external functions or through class instance methods, whichever are desired by the user.
+Fitting, predicting, and model scoring with the model can be done through external functions or through class instance methods. If class instance methods are used, then the model must implement :meth:`fit`, :meth:`predict`, and :meth:`score` methods, which are covered in more detail in `Quasi-scikit-learn compatible models`_. If external functions are used, they must all must have specific signatures. With type annotations, an external :meth:`fit` method should be defined as
+
+.. code:: python
+
+   def external_fit(model: object, X_train: object, y_train: object, **kwargs) -> object:
+       # ... code ...
+
+The ``model`` parameter accepts a compatible model instance, the training inputs ``X_train`` and training responses ``y_train`` are objects castable to :class:`numpy.ndarray` or :class:`dask.array.Array`, and the returned object can either be ``None`` or the model instance passed to ``model`` itself. Similarly, with type annotations, an external :meth:`predict` method should be defined as
+
+.. code:: python
+
+   def external_predict(model: object, X_val: object, **kwargs) -> object:
+       # ... code ...
+
+``X_val`` are validation inputs to make predictions for after fitting the model, castable to :class:`numpy.ndarray` or :class:`dask.array.Array`, while the returned object can either be ``None`` or the model instance passed to ``model``. However, an external :meth:`score` method typically returns a numeric value, so with type annotations, should be defined as
+
+.. code:: python
+
+   def external_score(model: object, y_true: object, y_pred: object, **kwargs) -> float:
+       # ... code ...
+
+Here ``y_true`` refers to the actual response values while ``y_pred`` refers to the fitted model's predicted values. Both ``y_true`` and ``y_pred`` must be castable to :class:`numpy.ndarray` or :class:`dask.array.Array`.
 
 Quasi-scikit-learn compatible models
 ------------------------------------
 
-When we label a supervised learning model as being "quasi-scikit-learn compatible", we mean that the model supports has an API that is similar to and supports some core features endemic to that of the scikit-learn models. For a model to fit our very loose definition of "quasi-scikit-learn compatible", it must be that
+When we label a supervised learning model as being "quasi-scikit-learn compatible", we mean that the model supports has an API that is similar to and supports some core features endemic to that of the models defined in the scikit-learn package. For a model to fit our very loose definition of "quasi-scikit-learn compatible", we require that
 
 1. The model is representable as an instance of a concrete class
-2. The model has four key instance methods, namely :meth:`fit`, :meth:`get_params`, :meth:`predict`, and :meth:`score`.
+2. The model has the instance methods :meth:`fit`, :meth:`get_params`, :meth:`predict`, and :meth:`score`.
 
-Function signatures. Note that we allow keyword arguments.
+.. note::
+
+   In case it wasn't obvious, quasi-scikit-learn compatibility implies the looser notion of compatibility discussed in the previous section.
+
+With type annotations, the :meth:`fit` method must be defined as
+
+.. code:: python
+
+   def fit(self: object, X_train: object, y_train: object, **kwargs) -> object
+       # ... code ...
+
+Here ``X_train`` is the training input data and ``y_train`` is the training response data, both castable to either :class:`numpy.ndarray` or :class:`dask.array.Array`. The returned object is either ``None`` or the model instance pointed to by ``self``. The :meth:`get_params` method should be defined according to the exposition in `Compatible models`_. With type annotations, the :meth:`predict` method should be defined as
+
+.. code:: python
+
+   def predict(self: object, X_val: object, **kwargs) -> object
+       # ... code ...
+
+in progress
    
 .. code:: python
 
