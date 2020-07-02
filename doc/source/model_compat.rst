@@ -39,7 +39,7 @@ A *compatible* model is a class that implements the instance method :meth:`get_p
    def get_params(self) -> dict:
        # ... code ...
 
-The signature of the function implies that all hyperparameters must be keyword arguments, the same practice as is used in scikit-learn. Accordingly, the simplest type of model that would be considered compatible would contain a few hyperparameters as instance variables, which :meth:`get_params` would return as a dict. An example is below.
+The signature of the function implies that all hyperparameters must be keyword arguments, the same practice as is used in scikit-learn. Accordingly, the simplest type of model that would be considered compatible would contain a few hyperparameters as instance variables, which :meth:`get_params` would return as a dict. A simple example is below.
 
 .. code:: python
 
@@ -102,23 +102,23 @@ With type annotations, the :meth:`fit` method must be defined as
 
 .. code:: python
 
-   def fit(self: object, X_train: object, y_train: object, **kwargs) -> object
+   def fit(self, X_train: object, y_train: object, **kwargs) -> object
        # ... code ...
 
 Here ``X_train`` is the training input data and ``y_train`` is the training response data, both castable to either :class:`numpy.ndarray` or :class:`dask.array.Array`. The returned object is either ``None`` or the model instance pointed to by ``self``. The :meth:`get_params` method should be defined according to the exposition in `Compatible models`_. With type annotations, the :meth:`predict` method should be defined as
 
 .. code:: python
 
-   def predict(self: object, X_val: object, **kwargs) -> object
+   def predict(self, X_val: object, **kwargs) -> object
        # ... code ...
 
 in progress
    
 .. code:: python
 
-   fit(self: object, X: numpy.ndarray, y: numpy.ndarray, **kwargs) -> object
-   get_params(self: object, **kwargs) -> dict
-   predict(self: object, X: numpy.ndarray, **kwargs) -> numpy.ndarray
-   score(self: object, X: numpy.ndarray, y: numpy.ndarray, **kwargs) -> float
+   fit(self, X: numpy.ndarray, y: numpy.ndarray, **kwargs) -> object
+   get_params(self, **kwargs) -> dict
+   predict(self, X: numpy.ndarray, **kwargs) -> numpy.ndarray
+   score(self, X: numpy.ndarray, y: numpy.ndarray, **kwargs) -> float
 
 Here ``X`` should have shape ``(n_samples, n_features)`` and ``y`` should have shape ``(n_samples,)`` or ``(n_samples, n_outputs)``.
